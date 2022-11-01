@@ -1,3 +1,5 @@
+mod Driveway;
+
 pub struct Message {
     message: String,
 }
@@ -17,7 +19,6 @@ pub trait TrackElement {
 
     fn state(&self) -> &Self::State;
     fn set_state(&mut self, new_state: Self::State);
-    fn send_message(&self, message: Message);
 }
 
 #[derive(Debug)]
@@ -42,7 +43,4 @@ impl TrackElement for Point {
         println!("Point state is now {:?}", self.state);
     }
 
-    fn send_message(&self, message: Message) {
-        message.print()
-    }
 }
