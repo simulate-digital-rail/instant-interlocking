@@ -1,4 +1,4 @@
-use crate::TrackElement;
+use crate::{TrackElement, TrackElementError};
 
 #[derive(Debug, Clone, Copy)]
 pub enum PointState {
@@ -19,12 +19,14 @@ impl Point {
 impl TrackElement for Point {
     type State = PointState;
 
+
     fn state(&self) -> Self::State {
         self.state
     }
 
-    fn set_state(&mut self, new_state: Self::State) {
+    fn set_state(&mut self, new_state: Self::State) -> Result<(), TrackElementError>{
         self.state = new_state;
         println!("Point state is now {:?}", self.state);
+        Ok(())
     }
 }

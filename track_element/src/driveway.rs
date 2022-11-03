@@ -1,36 +1,55 @@
-use crate::TrackElement;
+use std::cell::{RefCell, RefMut};
+use std::collections::HashMap;
+use std::rc::Rc;
 
-macro_rules! define_target_state {
-    ($(($id:ident, $elem:ty, $state:ty)),+) => {
-        pub struct TargetState {$($id: Vec<($elem, $state)>),+}
+use crate::{
+    point::{Point, PointState},
+    signal::{Signal, SignalState},
+};
+use crate::{TrackElement, TrackElementError};
 
-        impl TargetState {
-            pub fn new($($id: Vec<($elem, $state)>),+) -> Self {
-                Self {$($id),+}
-            }
-
-            pub fn set_state(&mut self) {
-                $(for (e, s) in &mut self.$id {
-                    e.set_state(*s);
-                });+
-            }
-        }
-    };
+pub struct TargetState {
+    points: Vec<(Rc<RefCell<Point>>, PointState)>,
+    signals: Vec<(Rc<RefCell<Signal>>, SignalState)>,
 }
 
-define_target_state!(
-    (point, crate::point::Point, crate::point::PointState),
-    (signal, crate::signal::Signal, crate::signal::SignalState)
-);
+impl TargetState {
+    pub fn new(
+        points: Vec<(Rc<RefCell<Point>>, PointState)>,
+        signals: Vec<(Rc<RefCell<Signal>>, SignalState)>,
+    ) -> Self {
+        Self { points, signals }
+    }
 
-pub struct Driveway {
-    conflicting_driveways: Vec<String>,
+    pub fn set_state(&mut self) -> Result<(), TrackElementError> {
+        for (elem, state) in &self.points {
+            elem.borrow_mut().set_state(*state)?;
+        }
+
+        // Set signals and rollback in case there was a failure
+        if self
+            .signals
+            .iter()
+            .map(|(elem, state)| elem.borrow_mut().set_state(*state))
+            .any(|r| r.is_err())
+        {
+            self.signals
+                .iter()
+                .for_each(|(elem, _)| elem.borrow_mut().reset())
+        }
+
+        Ok(())
+    }
+}
+
+pub struct Driveway<'a> {
+    conflicting_driveways: Vec<&'a Driveway<'a>>,
     is_set: bool,
     target_state: TargetState,
 }
 
-impl Driveway {
-    pub fn new(conflicting_driveways: Vec<String>, expected_state: TargetState) -> Self {
+impl<'a> Driveway<'a> {
+    pub fn new(conflicting_driveways: Vec<&'a Driveway<'a>>, expected_state: TargetState) -> Self {
         Self {
             conflicting_driveways,
             is_set: false,
@@ -42,8 +61,32 @@ impl Driveway {
         self.is_set
     }
 
-    pub fn set_way(&mut self) -> bool {
-        self.target_state.set_state();
-        true
+    pub fn set_way(&mut self) -> Result<(), TrackElementError> {
+        if self.has_conflicting_driveways() {
+            Err(TrackElementError)
+        } else {
+            self.target_state.set_state()?;
+            self.is_set = true;
+            Ok(())
+        }
+    }
+
+    fn has_conflicting_driveways(&self) -> bool {
+        self.conflicting_driveways.iter().any(|d| d.is_set())
+    }
+}
+
+struct DrivewayManager<'a> {
+    driveways: HashMap<String, &'a Driveway<'a>>,
+}
+
+impl<'a> DrivewayManager<'a> {
+    pub fn new(driveways: HashMap<String, &'a Driveway>) -> Self {
+        Self { driveways }
+    }
+
+    pub fn get(&self, uuid: &str) -> Option<&'a Driveway> {
+        //self.driveways.get(uuid)
+        todo!()
     }
 }
