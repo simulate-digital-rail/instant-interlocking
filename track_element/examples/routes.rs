@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 use serde_json::Value;
 
 fn main() -> anyhow::Result<()> {
-    let py_app = include_str!("d:\\Daten\\workspace\\Masterprojekt\\codegen\\dummy_driveway_generator\\src\\main.py");
+    let py_app = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../dummy_driveway_generator/src/main.py"));
 
     let from_python = Python::with_gil(|py| -> PyResult<Py<PyAny>> {
         let app: Py<PyAny> = PyModule::from_code(py, py_app, "", "")?
