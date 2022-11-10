@@ -7,7 +7,9 @@ edition = "2021"
 
 [dependencies]
 serde_json = "1.0.87"
-anyhow = "*"
+anyhow = "1.0.66"
+quote = "1.0.21"
+proc-macro2 = "1.0.47"
 
 [dependencies.pyo3]
 version = "0.17.3"
