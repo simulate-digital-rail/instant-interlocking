@@ -8,17 +8,24 @@ pub enum SignalState {
     Hp0,
 }
 
+impl Default for SignalState {
+    fn default() -> Self {
+        SignalState::Hp0
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum SignalType {}
 
 pub struct Signal {
     state: SignalState,
     type_: SignalType,
+    id: String,
 }
 
 impl Signal {
-    pub fn new(state: SignalState, type_: SignalType) -> Self {
-        Self { state, type_ }
+    pub fn new(state: SignalState, type_: SignalType, id: String) -> Self {
+        Self { state, type_, id }
     }
     pub fn reset(&mut self){
         self.state = SignalState::Hp0

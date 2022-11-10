@@ -6,13 +6,20 @@ pub enum PointState {
     Right,
 }
 
+impl Default for PointState {
+    fn default() -> Self {
+        PointState::Left
+    }
+}
+
 pub struct Point {
     state: PointState,
+    id: String,
 }
 
 impl Point {
-    pub fn new(state: PointState) -> Self {
-        Self { state }
+    pub fn new(state: PointState, id: String) -> Self {
+        Self { state, id }
     }
 }
 
