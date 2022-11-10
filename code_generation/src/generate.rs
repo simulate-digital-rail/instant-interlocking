@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::HashMap;
-use track_element::{point::PointState, signal::SignalState};
 use std::io::Write;
+use track_element::{point::PointState, signal::SignalState};
 
 #[derive(Clone, Copy)]
 enum TrackElement {
@@ -29,12 +29,43 @@ fn realize_element(element: (&str, &TrackElement)) -> TokenStream {
     }
 }
 
-fn realize_driveway(element_target_states: &[(&str, TrackElement, TrackElementState)]) -> TokenStream {
-    let point_states: Vec<_> = element_target_states.iter().filter_map(|(_,_,state)| if let TrackElementState::Point(p) = state {Some(p)} else {None}).collect();
-    let signal_states: Vec<_> = element_target_states.iter().filter_map(|(_,_,state)| if let TrackElementState::Signal(s) = state {Some(s)} else {None}).collect();
+fn realize_driveway(
+    element_target_states: &[(&str, TrackElement, TrackElementState)],
+) -> TokenStream {
+    let point_states: Vec<_> = element_target_states
+        .iter()
+        .filter_map(|(id, _, state)| {
+            if let TrackElementState::Point(p) = state {
+                Some(match p {
+                    PointState::Left => {
+                        quote! {(track_elements.get(#id).unwrap(), track_element::point::PointState::Left)}
+                    }
+                    PointState::Right => quote! {(track_elements.get(#id).unwrap(), track_element::point::PointState::Right)},
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+    let signal_states: Vec<_> = element_target_states
+        .iter()
+        .filter_map(|(id, _, state)| {
+            if let TrackElementState::Signal(s) = state {
+                Some(match s {
+                    SignalState::Ks1 => quote! {(track_elements.get(#id).unwrap(), track_element::signal::SignalState::Ks1)},
+                    SignalState::Ks2 => quote! {(track_elements.get(#id).unwrap(), track_element::signal::SignalState::Ks2)},
+                    SignalState::Hp0 => quote! {(track_elements.get(#id).unwrap(), track_element::signal::SignalState::Hp0)},
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
     quote! {
-            let target_state = track_element::driveway::TargetState::new(#point_states, #signal_states);
-            driveway_manager.add(Rc::new(RefCell::new(track_element::driveway::Driveway::new(vec![], target_state))));
+        let point_states = vec![#(#point_states),*];
+        let signal_states = vec![#(#signal_states),*];
+        let target_state = track_element::driveway::TargetState::new(point_states, signal_states);
+        driveway_manager.add(Rc::new(RefCell::new(track_element::driveway::Driveway::new(vec![], target_state))));
     }
 }
 
@@ -122,7 +153,9 @@ pub fn generator_example() {
         .map(|(id, element)| realize_element((*id, element)))
         .collect();
 
-    let driveway_tokens: _ = routes.iter().map(|route| realize_driveway(route.as_slice()));
+    let driveway_tokens: _ = routes
+        .iter()
+        .map(|route| realize_driveway(route.as_slice()));
 
     let tokens = quote! {
         use std::collections::HashMap;
@@ -135,16 +168,23 @@ pub fn generator_example() {
         fn main(){
             let mut track_elements = HashMap::new();
             #(#track_element_tokens)*
-            
-            let driveway_manager = DrivewayManager::new(HashMap::new())
+
+            let driveway_manager = DrivewayManager::new(HashMap::new());
             #(#driveway_tokens)*
-            
+
+            driveway_manager.update_conflicting_driveways();
+
             println!("{:?}", track_elements);
         }
     };
 
     println!("{}", tokens);
-    std::fs::create_dir("../dst").unwrap();
-    let mut fp = std::fs::File::create("../dst/ixl.rs").unwrap();
+    let _ = std::fs::create_dir("../dst");
+    let mut fp = std::fs::File::create("../dst/ixl.rs").unwrap_or_else(|_| {
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open("../dst/ixl.rs")
+            .unwrap()
+    });
     fp.write_all(tokens.to_string().as_bytes()).unwrap();
 }

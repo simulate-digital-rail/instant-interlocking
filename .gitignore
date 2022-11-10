@@ -1,5 +1,6 @@
 **/target/*
 **/.env/*
+**/dst/*
 
 *.json
 venv

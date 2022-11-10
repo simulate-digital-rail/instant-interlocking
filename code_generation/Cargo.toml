@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 quote = "1.0.21"
 proc-macro2 = "1.0.47"
+structopt = "0.3.26"
 
 [dependencies.track_element]
 path = "../track_element"
