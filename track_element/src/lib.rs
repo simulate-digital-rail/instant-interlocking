@@ -35,6 +35,7 @@ impl std::error::Error for TrackElementError {
 pub trait TrackElement {
     type State: Copy + Default;
 
+    fn id(&self) -> &str;
     fn state(&self) -> Self::State;
     fn set_state(&mut self, new_state: Self::State) -> Result<(), TrackElementError>;
 }

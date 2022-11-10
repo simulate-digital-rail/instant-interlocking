@@ -15,7 +15,9 @@ impl Default for SignalState {
 }
 
 #[derive(Clone, Copy)]
-pub enum SignalType {}
+pub enum SignalType {
+    ToDo
+}
 
 pub struct Signal {
     state: SignalState,
@@ -34,6 +36,10 @@ impl Signal {
 
 impl TrackElement for Signal {
     type State = SignalState;
+
+    fn id(&self) -> &str {
+        &self.id
+    }
 
     fn state(&self) -> Self::State {
         self.state

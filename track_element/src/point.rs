@@ -26,6 +26,9 @@ impl Point {
 impl TrackElement for Point {
     type State = PointState;
 
+    fn id(&self) -> &str {
+        &self.id
+    }
 
     fn state(&self) -> Self::State {
         self.state

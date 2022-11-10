@@ -42,14 +42,14 @@ impl TargetState {
     }
 }
 
-pub struct Driveway<'a> {
-    conflicting_driveways: Vec<&'a Driveway<'a>>,
+pub struct Driveway {
+    conflicting_driveways: Vec<Rc<RefCell<Driveway>>>,
     is_set: bool,
     target_state: TargetState,
 }
 
-impl<'a> Driveway<'a> {
-    pub fn new(conflicting_driveways: Vec<&'a Driveway<'a>>, expected_state: TargetState) -> Self {
+impl Driveway {
+    pub fn new(conflicting_driveways: Vec<Rc<RefCell<Driveway>>>, expected_state: TargetState) -> Self {
         Self {
             conflicting_driveways,
             is_set: false,
@@ -72,21 +72,38 @@ impl<'a> Driveway<'a> {
     }
 
     fn has_conflicting_driveways(&self) -> bool {
-        self.conflicting_driveways.iter().any(|d| d.is_set())
+        self.conflicting_driveways.iter().any(|d| d.borrow().is_set())
     }
 }
 
+// TODO: Consider moving to another crate
 struct DrivewayManager<'a> {
-    driveways: HashMap<String, &'a Driveway<'a>>,
+    driveways: HashMap<&'a str, Rc<RefCell<Driveway>>>,
 }
 
 impl<'a> DrivewayManager<'a> {
-    pub fn new(driveways: HashMap<String, &'a Driveway>) -> Self {
+    pub fn new(driveways: HashMap<&'a str, Rc<RefCell<Driveway>>>) -> Self {
         Self { driveways }
     }
 
-    pub fn get(&self, uuid: &str) -> Option<&'a Driveway> {
-        //self.driveways.get(uuid)
-        todo!()
+    pub fn get(&self, uuid: &str) -> Option<&Rc<RefCell<Driveway>>> {
+        self.driveways.get(uuid)
+        
+    }
+
+    pub fn add(&mut self, uuid: &'a str, driveway: Rc<RefCell<Driveway>>){
+        self.driveways.insert(uuid, driveway);
+    }
+
+    pub fn update_conflicting_driveways(&mut self) {
+        for driveway in self.driveways.values() {
+            for other in self.driveways.values() {
+                let driveway_elements = &driveway.borrow().target_state.points;
+                let other_elements = &other.borrow().target_state.points;
+                if driveway_elements.iter().any(|(e, _)| {other_elements.iter().any(|(o, _)| e.borrow().id() == o.borrow().id())}) {
+                    driveway.borrow_mut().conflicting_driveways.push(other.clone());
+                }
+            }
+        }
     }
 }
