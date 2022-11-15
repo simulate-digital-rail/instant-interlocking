@@ -48,7 +48,7 @@ impl TrackElement for Signal {
 
     fn set_state(&mut self, new_state: Self::State) -> Result<(), TrackElementError>{
         self.state = new_state;
-        println!("Signal is now {:?}", self.state);
+        println!("Signal {} is now {:?}", self.id(), self.state);
         Ok(())
     }
 }
