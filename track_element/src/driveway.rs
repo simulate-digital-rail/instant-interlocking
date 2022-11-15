@@ -104,7 +104,15 @@ impl DrivewayManager {
     }
 
     pub fn add(&mut self, driveway: Rc<RefCell<Driveway>>){
-        let id = Uuid::new_v4().simple().to_string();
+        // TODO: pls wtf is this ?!
+        let _driveway = driveway.clone();
+        let driveway_borrow  = _driveway.borrow();
+        let start_signal_borrow = driveway_borrow.start_signal.borrow();
+        let start_signal_id = start_signal_borrow.id();
+
+        let end_signal_borrow = driveway_borrow.end_signal.borrow();
+        let end_signal_id = end_signal_borrow.id();
+        let id = DrivewayManager::driveway_id(start_signal_id, end_signal_id);
         self.driveways.insert(id, driveway);
     }
 
