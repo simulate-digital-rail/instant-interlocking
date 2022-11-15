@@ -208,13 +208,13 @@ pub fn generator_example() {
 
             driveway_manager.update_conflicting_driveways();
 
-            println!("{:?}", track_elements);
-            println!("{:?}", driveway_manager.get_driveway_ids().collect::<Vec<_>>());
+            println!("TrackElements: {:?}", track_elements);
+            println!("Driveways: {:?}", driveway_manager.get_driveway_ids().collect::<Vec<_>>());
 
+            driveway_manager.set_driveway("C","D");
         }
     };
 
-    //println!("{}", tokens);
     let _ = std::fs::create_dir("dst");
     let mut fp = std::fs::File::create("examples/ixl.rs").unwrap_or_else(|_| {
         std::fs::OpenOptions::new()
