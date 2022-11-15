@@ -1,6 +1,7 @@
 pub mod driveway;
 pub mod point;
 pub mod signal;
+pub mod control_station;
 
 #[cfg(test)]
 mod test;
@@ -20,7 +21,10 @@ impl Message {
 }
 
 #[derive(Debug)]
-pub struct TrackElementError;
+pub enum TrackElementError{
+    DrivewayDoesNotExist,
+    HasConflictingDriveways
+}
 
 impl std::fmt::Display for TrackElementError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

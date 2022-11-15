@@ -1,7 +1,9 @@
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
+use std::iter::Iterator;
 use std::rc::Rc;
 use uuid::Uuid;
+
 
 use crate::{
     point::{Point, PointState},
@@ -49,14 +51,18 @@ pub struct Driveway {
     conflicting_driveways: Vec<Rc<RefCell<Driveway>>>,
     is_set: bool,
     target_state: TargetState,
+    start_signal: Rc<RefCell<Signal>>,
+    end_signal: Rc<RefCell<Signal>>,
 }
 
 impl Driveway {
-    pub fn new(conflicting_driveways: Vec<Rc<RefCell<Driveway>>>, expected_state: TargetState) -> Self {
+    pub fn new(conflicting_driveways: Vec<Rc<RefCell<Driveway>>>, expected_state: TargetState, start_signal: Rc<RefCell<Signal>>, end_signal: Rc<RefCell<Signal>>) -> Self {
         Self {
             conflicting_driveways,
             is_set: false,
             target_state: expected_state,
+            start_signal,
+            end_signal
         }
     }
 
@@ -66,7 +72,7 @@ impl Driveway {
 
     pub fn set_way(&mut self) -> Result<(), TrackElementError> {
         if self.has_conflicting_driveways() {
-            Err(TrackElementError)
+            Err(TrackElementError::HasConflictingDriveways)
         } else {
             self.target_state.set_state()?;
             self.is_set = true;
@@ -89,14 +95,28 @@ impl DrivewayManager {
         Self { driveways }
     }
 
-    pub fn get(&self, uuid: &str) -> Option<&Rc<RefCell<Driveway>>> {
-        self.driveways.get(uuid)
-        
+    pub fn get(&self, uuid: &str) -> Option<Rc<RefCell<Driveway>>> {
+        self.driveways.get(uuid).cloned()
+    }
+
+    pub fn get_driveway_ids(&self) -> impl Iterator<Item = &String> {
+        self.driveways.keys()
     }
 
     pub fn add(&mut self, driveway: Rc<RefCell<Driveway>>){
         let id = Uuid::new_v4().simple().to_string();
         self.driveways.insert(id, driveway);
+    }
+
+    pub fn set_driveway(&self, start_signal_id: &str, end_signal_id: &str) -> Result<(), TrackElementError>{
+        let id = DrivewayManager::driveway_id(start_signal_id, end_signal_id);
+        let driveway = self.get(&id).ok_or(TrackElementError::DrivewayDoesNotExist)?;
+        driveway.borrow_mut().set_way()?;
+        Ok(())
+    }
+
+    fn driveway_id(a: &str, b: &str) -> String{
+        format!("{}-{}", a, b)
     }
 
     pub fn update_conflicting_driveways(&mut self) {
