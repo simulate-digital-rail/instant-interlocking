@@ -2,8 +2,6 @@ use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::iter::Iterator;
 use std::rc::Rc;
-use uuid::Uuid;
-
 
 use crate::{
     point::{Point, PointState},
@@ -56,13 +54,18 @@ pub struct Driveway {
 }
 
 impl Driveway {
-    pub fn new(conflicting_driveways: Vec<Rc<RefCell<Driveway>>>, expected_state: TargetState, start_signal: Rc<RefCell<Signal>>, end_signal: Rc<RefCell<Signal>>) -> Self {
+    pub fn new(
+        conflicting_driveways: Vec<Rc<RefCell<Driveway>>>,
+        expected_state: TargetState,
+        start_signal: Rc<RefCell<Signal>>,
+        end_signal: Rc<RefCell<Signal>>,
+    ) -> Self {
         Self {
             conflicting_driveways,
             is_set: false,
             target_state: expected_state,
             start_signal,
-            end_signal
+            end_signal,
         }
     }
 
@@ -81,11 +84,12 @@ impl Driveway {
     }
 
     fn has_conflicting_driveways(&self) -> bool {
-        self.conflicting_driveways.iter().any(|d| d.borrow().is_set())
+        self.conflicting_driveways
+            .iter()
+            .any(|d| d.borrow().is_set())
     }
 }
 
-// TODO: Consider moving to another crate
 pub struct DrivewayManager {
     driveways: HashMap<String, Rc<RefCell<Driveway>>>,
 }
@@ -103,9 +107,9 @@ impl DrivewayManager {
         self.driveways.keys()
     }
 
-    pub fn add(&mut self, driveway: Rc<RefCell<Driveway>>){
+    pub fn add(&mut self, driveway: Rc<RefCell<Driveway>>) {
         let _driveway = driveway.clone();
-        let driveway_borrow  = _driveway.borrow();
+        let driveway_borrow = _driveway.borrow();
         let start_signal_borrow = driveway_borrow.start_signal.borrow();
         let end_signal_borrow = driveway_borrow.end_signal.borrow();
 
@@ -113,28 +117,44 @@ impl DrivewayManager {
         self.driveways.insert(id, driveway);
     }
 
-    pub fn set_driveway(&self, start_signal_id: &str, end_signal_id: &str) -> Result<(), TrackElementError>{
+    pub fn set_driveway(
+        &self,
+        start_signal_id: &str,
+        end_signal_id: &str,
+    ) -> Result<(), TrackElementError> {
         let id = DrivewayManager::driveway_id(start_signal_id, end_signal_id);
-        let driveway = self.get(&id).ok_or(TrackElementError::DrivewayDoesNotExist)?;
+        let driveway = self
+            .get(&id)
+            .ok_or(TrackElementError::DrivewayDoesNotExist)?;
         driveway.borrow_mut().set_way()?;
         Ok(())
     }
 
-    fn driveway_id(a: &str, b: &str) -> String{
+    fn driveway_id(a: &str, b: &str) -> String {
         format!("{}-{}", a, b)
     }
 
     pub fn update_conflicting_driveways(&mut self) {
         for (id1, driveway) in self.driveways.iter() {
             for (id2, other) in self.driveways.iter() {
-                if id1 == id2 {continue;}
+                if id1 == id2 {
+                    continue;
+                }
                 let mut driveway = driveway.borrow_mut();
                 let driveway_points = &driveway.target_state.points;
                 let other_points = &other.borrow().target_state.points;
                 let driveway_signals = &driveway.target_state.signals;
                 let other_signals = &other.borrow().target_state.signals;
-                let has_conflicting_points = driveway_points.iter().any(|(e, _)| {other_points.iter().any(|(o, _)| e.borrow().id() == o.borrow().id())});
-                let has_conflicting_signals = driveway_signals.iter().any(|(e, _)| {other_signals.iter().any(|(o, _)| e.borrow().id() == o.borrow().id())});
+                let has_conflicting_points = driveway_points.iter().any(|(e, _)| {
+                    other_points
+                        .iter()
+                        .any(|(o, _)| e.borrow().id() == o.borrow().id())
+                });
+                let has_conflicting_signals = driveway_signals.iter().any(|(e, _)| {
+                    other_signals
+                        .iter()
+                        .any(|(o, _)| e.borrow().id() == o.borrow().id())
+                });
                 if has_conflicting_points || has_conflicting_signals {
                     driveway.conflicting_driveways.push(other.clone());
                 }

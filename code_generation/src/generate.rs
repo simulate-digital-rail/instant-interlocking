@@ -5,19 +5,23 @@ use std::io::Write;
 use track_element::{point::PointState, signal::SignalState};
 
 #[derive(Clone, Copy)]
-enum TrackElement {
+pub enum TrackElement {
     Point,
     Signal,
 }
 
 #[derive(Clone, Copy)]
-enum TrackElementState {
+pub enum TrackElementState {
     Point(track_element::point::PointState),
     Signal(track_element::signal::SignalState),
 }
 
 fn unpack_track_element_signal(id: &str) -> TokenStream {
-    quote!{match track_elements.get(#id).unwrap() {TrackElement::Signal(s) => s.clone(), _ => unreachable!() }}
+    quote! {match track_elements.get(#id).unwrap() {TrackElement::Signal(s) => s.clone(), _ => unreachable!() }}
+}
+
+fn unpack_track_element_point(id: &str) -> TokenStream {
+    quote! {match track_elements.get(#id).unwrap() {TrackElement::Point(p) => p.clone(), _ => unreachable!() }}
 }
 
 /// Create new TrackElements and add them to a HashMap
@@ -34,24 +38,27 @@ fn realize_element(element: (&str, &TrackElement)) -> TokenStream {
 }
 
 fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
-    let point_states: Vec<_> = element_target_states.target_state
+    let point_states: Vec<_> = element_target_states
+        .target_state
         .iter()
         .filter_map(|(id, _, state)| {
             if let TrackElementState::Point(p) = state {
+                let point = unpack_track_element_point(id);
                 Some(match p {
                     PointState::Left => {
-                        quote! {(match track_elements.get(#id).unwrap() {TrackElement::Point(p) => p.clone(), _ => unreachable!() }, track_element::point::PointState::Left)}
-                    },
+                        quote! {(#point, track_element::point::PointState::Left)}
+                    }
                     PointState::Right => {
-                        quote! {(match track_elements.get(#id).unwrap() {TrackElement::Point(p) => p.clone(), _ => unreachable!() }, track_element::point::PointState::Right)}
-                    },
+                        quote! {(#point, track_element::point::PointState::Right)}
+                    }
                 })
             } else {
                 None
             }
         })
         .collect();
-    let signal_states: Vec<_> = element_target_states.target_state
+    let signal_states: Vec<_> = element_target_states
+        .target_state
         .iter()
         .filter_map(|(id, _, state)| {
             if let TrackElementState::Signal(s) = state {
@@ -80,100 +87,14 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
     }
 }
 
-struct DrivewayRepr {
-    target_state: Vec<(String, TrackElement, TrackElementState)>,
-    start_signal_id: String,
-    end_signal_id: String,
+pub struct DrivewayRepr {
+    pub target_state: Vec<(String, TrackElement, TrackElementState)>,
+    pub start_signal_id: String,
+    pub end_signal_id: String,
 }
 
-pub fn generator_example() {
+pub fn generate(routes: Vec<DrivewayRepr>) {
     let mut track_elements: HashMap<&str, TrackElement> = HashMap::new();
-    let routes: Vec<DrivewayRepr> = vec![
-        DrivewayRepr {
-            target_state: vec![
-                (
-                    "A".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
-                ),
-                (
-                    "B".to_owned(),
-                    TrackElement::Point,
-                    TrackElementState::Point(PointState::Left),
-                ),
-                (
-                    "C".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
-                ),
-            ],
-            start_signal_id: "A".to_owned(),
-            end_signal_id: "C".to_owned(),
-        },
-        DrivewayRepr {
-            target_state: vec![
-                (
-                    "B".to_owned(),
-                    TrackElement::Point,
-                    TrackElementState::Point(PointState::Left),
-                ),
-                (
-                    "C".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
-                ),
-                (
-                    "D".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
-                ),
-            ],
-            start_signal_id: "C".to_owned(),
-            end_signal_id: "D".to_owned(),
-        },
-        DrivewayRepr {
-            target_state: vec![
-                (
-                    "D".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
-                ),
-                (
-                    "E".to_owned(),
-                    TrackElement::Point,
-                    TrackElementState::Point(PointState::Left),
-                ),
-                (
-                    "F".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
-                ),
-            ],
-            start_signal_id: "D".to_owned(),
-            end_signal_id: "F".to_owned(),
-        },
-        DrivewayRepr {
-            target_state: vec![
-                (
-                    "E".to_owned(),
-                    TrackElement::Point,
-                    TrackElementState::Point(PointState::Left),
-                ),
-                (
-                    "G".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
-                ),
-                (
-                    "H".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
-                ),
-            ],
-            start_signal_id: "G".to_owned(),
-            end_signal_id: "H".to_owned(),
-        },
-    ];
 
     for route in &routes {
         for (id, elem, _) in &route.target_state {
@@ -189,6 +110,8 @@ pub fn generator_example() {
     let driveway_tokens: _ = routes.iter().map(|route| realize_driveway(route));
 
     let tokens = quote! {
+        extern crate track_element;
+
         use std::collections::HashMap;
         use std::cell::RefCell;
         use std::rc::Rc;
@@ -211,7 +134,8 @@ pub fn generator_example() {
             println!("TrackElements: {:?}", track_elements);
             println!("Driveways: {:?}", driveway_manager.get_driveway_ids().collect::<Vec<_>>());
 
-            driveway_manager.set_driveway("C","D");
+            let control_station = track_element::control_station::ControlStation::new(driveway_manager);
+            control_station.start();
         }
     };
 
