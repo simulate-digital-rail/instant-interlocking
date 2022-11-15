@@ -1,6 +1,7 @@
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
+use uuid::Uuid;
 
 use crate::{
     point::{Point, PointState},
@@ -8,6 +9,7 @@ use crate::{
 };
 use crate::{TrackElement, TrackElementError};
 
+#[derive(Debug)]
 pub struct TargetState {
     points: Vec<(Rc<RefCell<Point>>, PointState)>,
     signals: Vec<(Rc<RefCell<Signal>>, SignalState)>,
@@ -42,6 +44,7 @@ impl TargetState {
     }
 }
 
+#[derive(Debug)]
 pub struct Driveway {
     conflicting_driveways: Vec<Rc<RefCell<Driveway>>>,
     is_set: bool,
@@ -77,12 +80,12 @@ impl Driveway {
 }
 
 // TODO: Consider moving to another crate
-struct DrivewayManager<'a> {
-    driveways: HashMap<&'a str, Rc<RefCell<Driveway>>>,
+pub struct DrivewayManager {
+    driveways: HashMap<String, Rc<RefCell<Driveway>>>,
 }
 
-impl<'a> DrivewayManager<'a> {
-    pub fn new(driveways: HashMap<&'a str, Rc<RefCell<Driveway>>>) -> Self {
+impl DrivewayManager {
+    pub fn new(driveways: HashMap<String, Rc<RefCell<Driveway>>>) -> Self {
         Self { driveways }
     }
 
@@ -91,17 +94,24 @@ impl<'a> DrivewayManager<'a> {
         
     }
 
-    pub fn add(&mut self, uuid: &'a str, driveway: Rc<RefCell<Driveway>>){
-        self.driveways.insert(uuid, driveway);
+    pub fn add(&mut self, driveway: Rc<RefCell<Driveway>>){
+        let id = Uuid::new_v4().simple().to_string();
+        self.driveways.insert(id, driveway);
     }
 
     pub fn update_conflicting_driveways(&mut self) {
-        for driveway in self.driveways.values() {
-            for other in self.driveways.values() {
-                let driveway_elements = &driveway.borrow().target_state.points;
-                let other_elements = &other.borrow().target_state.points;
-                if driveway_elements.iter().any(|(e, _)| {other_elements.iter().any(|(o, _)| e.borrow().id() == o.borrow().id())}) {
-                    driveway.borrow_mut().conflicting_driveways.push(other.clone());
+        for (id1, driveway) in self.driveways.iter() {
+            for (id2, other) in self.driveways.iter() {
+                if id1 == id2 {continue;}
+                let mut driveway = driveway.borrow_mut();
+                let driveway_points = &driveway.target_state.points;
+                let other_points = &other.borrow().target_state.points;
+                let driveway_signals = &driveway.target_state.signals;
+                let other_signals = &other.borrow().target_state.signals;
+                let has_conflicting_points = driveway_points.iter().any(|(e, _)| {other_points.iter().any(|(o, _)| e.borrow().id() == o.borrow().id())});
+                let has_conflicting_signals = driveway_signals.iter().any(|(e, _)| {other_signals.iter().any(|(o, _)| e.borrow().id() == o.borrow().id())});
+                if has_conflicting_points || has_conflicting_signals {
+                    driveway.conflicting_driveways.push(other.clone());
                 }
             }
         }

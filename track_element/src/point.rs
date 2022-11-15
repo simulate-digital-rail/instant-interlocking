@@ -12,6 +12,7 @@ impl Default for PointState {
     }
 }
 
+#[derive(Debug)]
 pub struct Point {
     state: PointState,
     id: String,

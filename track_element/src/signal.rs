@@ -14,11 +14,12 @@ impl Default for SignalState {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum SignalType {
     ToDo
 }
 
+#[derive(Debug)]
 pub struct Signal {
     state: SignalState,
     type_: SignalType,

@@ -21,10 +21,10 @@ fn realize_element(element: (&str, &TrackElement)) -> TokenStream {
     let (id, kind) = element;
     match kind {
         TrackElement::Point => quote! {
-            track_elements.insert(#id, TrackElement::Point(track_element::point::Point::new(track_element::point::PointState::default(), #id)));
+            track_elements.insert(#id, TrackElement::Point(Rc::new(RefCell::new(track_element::point::Point::new(track_element::point::PointState::default(), #id.to_owned())))));
         },
         TrackElement::Signal => quote! {
-            track_element.insert(#id, TrackElement::Signal(track_element::signal::Signal::new(track_element::signal::SignalState::default(), track_element::signal::SignalType::ToDo, #id)));
+            track_elements.insert(#id, TrackElement::Signal(Rc::new(RefCell::new(track_element::signal::Signal::new(track_element::signal::SignalState::default(), track_element::signal::SignalType::ToDo, #id.to_owned())))));
         },
     }
 }
@@ -38,9 +38,11 @@ fn realize_driveway(
             if let TrackElementState::Point(p) = state {
                 Some(match p {
                     PointState::Left => {
-                        quote! {(track_elements.get(#id).unwrap(), track_element::point::PointState::Left)}
-                    }
-                    PointState::Right => quote! {(track_elements.get(#id).unwrap(), track_element::point::PointState::Right)},
+                        quote! {(match track_elements.get(#id).unwrap() {TrackElement::Point(p) => p.clone(), _ => unreachable!() }, track_element::point::PointState::Left)}
+                    },
+                    PointState::Right => {
+                        quote! {(match track_elements.get(#id).unwrap() {TrackElement::Point(p) => p.clone(), _ => unreachable!() }, track_element::point::PointState::Right)}
+                    },
                 })
             } else {
                 None
@@ -52,9 +54,9 @@ fn realize_driveway(
         .filter_map(|(id, _, state)| {
             if let TrackElementState::Signal(s) = state {
                 Some(match s {
-                    SignalState::Ks1 => quote! {(track_elements.get(#id).unwrap(), track_element::signal::SignalState::Ks1)},
-                    SignalState::Ks2 => quote! {(track_elements.get(#id).unwrap(), track_element::signal::SignalState::Ks2)},
-                    SignalState::Hp0 => quote! {(track_elements.get(#id).unwrap(), track_element::signal::SignalState::Hp0)},
+                    SignalState::Ks1 => quote! {(match track_elements.get(#id).unwrap() {TrackElement::Signal(s) => s.clone(), _ => unreachable!() }, track_element::signal::SignalState::Ks1)},
+                    SignalState::Ks2 => quote! {(match track_elements.get(#id).unwrap() {TrackElement::Signal(s) => s.clone(), _ => unreachable!() }, track_element::signal::SignalState::Ks2)},
+                    SignalState::Hp0 => quote! {(match track_elements.get(#id).unwrap() {TrackElement::Signal(s) => s.clone(), _ => unreachable!() }, track_element::signal::SignalState::Hp0)},
                 })
             } else {
                 None
@@ -86,7 +88,7 @@ pub fn generator_example() {
             (
                 "C",
                 TrackElement::Signal,
-                TrackElementState::Point(PointState::Left),
+                TrackElementState::Signal(SignalState::Ks1),
             ),
         ],
         vec![
@@ -159,17 +161,20 @@ pub fn generator_example() {
 
     let tokens = quote! {
         use std::collections::HashMap;
+        use std::cell::RefCell;
+        use std::rc::Rc;
 
+        #[derive(Debug)]
         enum TrackElement {
-            Point(track_element::point::Point),
-            Signal(track_element::signal::Signal)
+            Point(Rc<RefCell<track_element::point::Point>>),
+            Signal(Rc<RefCell<track_element::signal::Signal>>)
         }
 
         fn main(){
             let mut track_elements = HashMap::new();
             #(#track_element_tokens)*
 
-            let driveway_manager = DrivewayManager::new(HashMap::new());
+            let mut driveway_manager = track_element::driveway::DrivewayManager::new(HashMap::new());
             #(#driveway_tokens)*
 
             driveway_manager.update_conflicting_driveways();
@@ -178,12 +183,12 @@ pub fn generator_example() {
         }
     };
 
-    println!("{}", tokens);
-    let _ = std::fs::create_dir("../dst");
-    let mut fp = std::fs::File::create("../dst/ixl.rs").unwrap_or_else(|_| {
+    //println!("{}", tokens);
+    let _ = std::fs::create_dir("dst");
+    let mut fp = std::fs::File::create("examples/ixl.rs").unwrap_or_else(|_| {
         std::fs::OpenOptions::new()
             .write(true)
-            .open("../dst/ixl.rs")
+            .open("examples/ixl.rs")
             .unwrap()
     });
     fp.write_all(tokens.to_string().as_bytes()).unwrap();
