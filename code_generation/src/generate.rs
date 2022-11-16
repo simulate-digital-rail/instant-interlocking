@@ -1,8 +1,14 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::HashMap;
-use std::io::Write;
+use thiserror::Error;
 use track_element::{point::PointState, signal::SignalState};
+
+#[derive(Debug, Error)]
+pub enum GenerationError {
+    #[error("Two track elements with the same ID, but different types exist.")]
+    DuplicateTrackElement,
+}
 
 #[derive(Clone, Copy)]
 pub enum TrackElement {
@@ -93,12 +99,25 @@ pub struct DrivewayRepr {
     pub end_signal_id: String,
 }
 
-pub fn generate(routes: Vec<DrivewayRepr>) {
+pub fn generate(routes: Vec<DrivewayRepr>) -> Result<String, GenerationError> {
     let mut track_elements: HashMap<&str, TrackElement> = HashMap::new();
 
     for route in &routes {
         for (id, elem, _) in &route.target_state {
-            track_elements.insert(&id, *elem);
+            if !track_elements.contains_key(id.as_str()) {
+                track_elements.insert(id, *elem);
+            } else {
+                let existing_track_element = track_elements.get(id.as_str()).unwrap();
+                match (existing_track_element, elem) {
+                    (TrackElement::Point, TrackElement::Signal) => {
+                        return Err(GenerationError::DuplicateTrackElement)
+                    }
+                    (TrackElement::Signal, TrackElement::Point) => {
+                        return Err(GenerationError::DuplicateTrackElement)
+                    }
+                    _ => {}
+                }
+            }
         }
     }
 
@@ -107,7 +126,7 @@ pub fn generate(routes: Vec<DrivewayRepr>) {
         .map(|(id, element)| realize_element((*id, element)))
         .collect();
 
-    let driveway_tokens: _ = routes.iter().map(|route| realize_driveway(route));
+    let driveway_tokens: _ = routes.iter().map(realize_driveway);
 
     let tokens = quote! {
         extern crate track_element;
@@ -139,12 +158,5 @@ pub fn generate(routes: Vec<DrivewayRepr>) {
         }
     };
 
-    let _ = std::fs::create_dir("dst");
-    let mut fp = std::fs::File::create("examples/ixl.rs").unwrap_or_else(|_| {
-        std::fs::OpenOptions::new()
-            .write(true)
-            .open("examples/ixl.rs")
-            .unwrap()
-    });
-    fp.write_all(tokens.to_string().as_bytes()).unwrap();
+    Ok(tokens.to_string())
 }

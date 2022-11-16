@@ -1,9 +1,11 @@
-use generate::{DrivewayRepr, TrackElement, TrackElementState};
+use std::io::Write;
+
+use generate::{DrivewayRepr, GenerationError, TrackElement, TrackElementState};
 use track_element::{point::PointState, signal::SignalState};
 
 mod generate;
 
-fn main() {
+fn main() -> Result<(), GenerationError> {
     let routes: Vec<DrivewayRepr> = vec![
         DrivewayRepr {
             target_state: vec![
@@ -90,5 +92,16 @@ fn main() {
             end_signal_id: "H".to_owned(),
         },
     ];
-    generate::generate(routes);
+    let generated = generate::generate(routes)?;
+
+    let _ = std::fs::create_dir("dst");
+    let mut fp = std::fs::File::create("examples/ixl.rs").unwrap_or_else(|_| {
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open("examples/ixl.rs")
+            .unwrap()
+    });
+    fp.write_all(generated.as_bytes()).unwrap();
+
+    Ok(())
 }
