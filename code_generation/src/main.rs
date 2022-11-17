@@ -3,7 +3,6 @@ use std::{io::Write};
 use generate::{DrivewayRepr, GenerationError, TrackElement, TrackElementState};
 use track_element::{point::PointState, signal::SignalState};
 
-mod dev_test;
 mod generate;
 
 const DEVELOPMENT_ENV: &str = "CODE_GENERATION_DEVELOPMENT_MODE";
