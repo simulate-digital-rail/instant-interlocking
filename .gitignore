@@ -1,7 +1,11 @@
 **/target/*
 **/.env/*
+**/dst/*
 
 *.json
 *.ppxml
+venv
+
+dev_*
 
 .idea/
