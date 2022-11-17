@@ -22,6 +22,15 @@ test:cargo:
     - cd track_element/
     - rustc --version && cargo --version  # Print version info for debugging
     - cargo test --workspace --verbose
+    - cd code_generation
+    - echo Generating interlocking code ...
+    - cargo run
+    - cd .. 
+    - mkdir Interlocking
+    - cd Interlocking
+    - cargo init
+    - mkdir test
+    - mv ../code_generation/dst/ixl.rs test
 
 # Optional: Use a third party library to generate gitlab junit reports
 # test:junit-report:
