@@ -34,6 +34,7 @@ test:code_generation:
     - cargo init
     - mv ../codegen/code_generation/src/dev_test.rs src
     - sed -i '1s/^/mod dev_test;\n/' src/main.rs
+    - echo 'track_element = { path = "../codegen/track_element" }' >> Cargo.toml
     - cargo test
 
 # Optional: Use a third party library to generate gitlab junit reports
