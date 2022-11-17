@@ -32,8 +32,7 @@ test:code_generation:
     - mkdir Interlocking
     - cd Interlocking/
     - cargo init
-    - mkdir test
-    - mv ../codegen/code_generation/src/dev_test.rs test
+    - mv ../codegen/code_generation/src/dev_test.rs src
     - sed -i '1s/^/mod dev_test;\n/' src/main.rs
     - cargo test
 
