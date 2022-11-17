@@ -24,6 +24,7 @@ test:track_elements:
     - cargo test --workspace --verbose
     - cd ..
 test:code_generation:
+  script:
     - cd code_generation/
     - echo Generating interlocking code ...
     - cargo run
