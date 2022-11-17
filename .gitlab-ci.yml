@@ -17,12 +17,14 @@ image: "nucypher/rust-python:3.8.12"
 #   - apt-get install -yqq --no-install-recommends build-essential
 
 # Use cargo to test the project
-test:cargo:
+test:track_elements:
   script:
     - cd track_element/
     - rustc --version && cargo --version  # Print version info for debugging
     - cargo test --workspace --verbose
-    - cd ../code_generation/
+    - cd ..
+test:code_generation:
+    - cd code_generation/
     - echo Generating interlocking code ...
     - cargo run
     - cd .. 
@@ -30,7 +32,9 @@ test:cargo:
     - cd Interlocking/
     - cargo init
     - mkdir test
-    - mv ../code_generation/dst/ixl.rs test
+    - mv ../code_generation/src/dev_test.rs test
+    - sed -i '1s/^/mod dev_test;\n/' src/main.rs
+    - cargo test
 
 # Optional: Use a third party library to generate gitlab junit reports
 # test:junit-report:
