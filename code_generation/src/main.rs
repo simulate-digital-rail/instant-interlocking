@@ -109,8 +109,8 @@ fn main() -> Result<(), GenerationError> {
     let file_path = format!("{}/{}", path, file_name);
 
     match std::fs::create_dir_all(path) {
-        Ok(v) => println!("Created directory {}", path),
-        Err(e) => panic!("$Could not create directory {}. {}",path, e)
+        Ok(_) => println!("Created directory {}", path),
+        Err(e) => panic!("Could not create directory {}. {}",path, e)
     }
 
     let mut fp = std::fs::File::create(file_path.clone()).unwrap_or_else(|_| {
