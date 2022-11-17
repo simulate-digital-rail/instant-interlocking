@@ -1,9 +1,11 @@
-use std::io::Write;
+use std::{io::Write};
 
 use generate::{DrivewayRepr, GenerationError, TrackElement, TrackElementState};
 use track_element::{point::PointState, signal::SignalState};
 
 mod generate;
+
+const Development_Env: &str = "CODE_GENERATION_DEVELOPMENT_MODE";
 
 fn main() -> Result<(), GenerationError> {
     let routes: Vec<DrivewayRepr> = vec![
@@ -94,11 +96,27 @@ fn main() -> Result<(), GenerationError> {
     ];
     let generated = generate::generate(routes)?;
 
-    let _ = std::fs::create_dir("dst");
-    let mut fp = std::fs::File::create("examples/ixl.rs").unwrap_or_else(|_| {
+    let mut is_development = false;
+    match std::env::var(Development_Env) {
+        Ok(_) => {
+            is_development = true;
+            println!("Development mode")},
+        Err(_) => ()
+    }
+
+    let path = if is_development {"examples"} else {"dst"};
+    let file_name = if is_development {"dev_ixl.rs"} else {"ixl.rs"};
+    let file_path = format!("{}/{}", path, file_name);
+
+    match std::fs::create_dir_all(path) {
+        Ok(v) => println!("Created directory {}", path),
+        Err(e) => panic!("$Could not create directory {}. {}",path, e)
+    }
+
+    let mut fp = std::fs::File::create(file_path.clone()).unwrap_or_else(|_| {
         std::fs::OpenOptions::new()
             .write(true)
-            .open("examples/ixl.rs")
+            .open(file_path)
             .unwrap()
     });
     fp.write_all(generated.as_bytes()).unwrap();
