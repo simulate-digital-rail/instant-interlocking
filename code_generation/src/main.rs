@@ -3,9 +3,10 @@ use std::{io::Write};
 use generate::{DrivewayRepr, GenerationError, TrackElement, TrackElementState};
 use track_element::{point::PointState, signal::SignalState};
 
+mod dev_test;
 mod generate;
 
-const Development_Env: &str = "CODE_GENERATION_DEVELOPMENT_MODE";
+const DEVELOPMENT_ENV: &str = "CODE_GENERATION_DEVELOPMENT_MODE";
 
 fn main() -> Result<(), GenerationError> {
     let routes: Vec<DrivewayRepr> = vec![
@@ -94,10 +95,11 @@ fn main() -> Result<(), GenerationError> {
             end_signal_id: "H".to_owned(),
         },
     ];
-    let generated = generate::generate(routes)?;
+    let generated = generate::generate(&routes)?;
+    let generated_tests = generate::generate_tests(&routes)?;
 
     let mut is_development = false;
-    match std::env::var(Development_Env) {
+    match std::env::var(DEVELOPMENT_ENV) {
         Ok(_) => {
             is_development = true;
             println!("Development mode")},
@@ -113,6 +115,7 @@ fn main() -> Result<(), GenerationError> {
         Err(e) => panic!("Could not create directory {}. {}",path, e)
     }
 
+    // Interlocking
     let mut fp = std::fs::File::create(file_path.clone()).unwrap_or_else(|_| {
         std::fs::OpenOptions::new()
             .write(true)
@@ -120,6 +123,15 @@ fn main() -> Result<(), GenerationError> {
             .unwrap()
     });
     fp.write_all(generated.as_bytes()).unwrap();
+
+    // Tests
+    let mut fp = std::fs::File::create("src/dev_test.rs").unwrap_or_else(|_| {
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open("src/dev_test.rs")
+            .unwrap()
+    });
+    fp.write_all(generated_tests.as_bytes()).unwrap();
 
     Ok(())
 }
