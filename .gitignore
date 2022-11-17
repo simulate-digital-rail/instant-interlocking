@@ -5,6 +5,7 @@
 *.json
 *.ppxml
 venv
+.venv
 
 dev_*
 

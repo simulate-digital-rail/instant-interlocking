@@ -1,27 +1,51 @@
-use std::{io::Write};
+use std::{fs, io::Write, path::PathBuf};
 
-use generate::{DrivewayRepr, GenerationError, TrackElement, TrackElementState};
+use driveway::{DrivewayRepr, TargetState, TrackElement, TrackElementState};
+use structopt::StructOpt;
 use track_element::{point::PointState, signal::SignalState};
 
+mod driveway;
 mod generate;
 
-const Development_Env: &str = "CODE_GENERATION_DEVELOPMENT_MODE";
+const DEVELOPMENT_ENV: &str = "CODE_GENERATION_DEVELOPMENT_MODE";
 
-fn main() -> Result<(), GenerationError> {
-    let routes: Vec<DrivewayRepr> = vec![
+#[derive(Debug, StructOpt)]
+#[structopt(
+    name = "IXL Code Generator",
+    about = "A tool to generate exceutable interlockings from JSON"
+)]
+struct Opt {
+    /// The JSON source for the generator
+    #[structopt(parse(from_os_str), required_unless("example"))]
+    input: PathBuf,
+    /// Where to write the generated interlocking code
+    #[structopt(long, short, parse(from_os_str))]
+    output: Option<PathBuf>,
+    /// Use the example data provided by this tool
+    #[structopt(long)]
+    example: bool,
+    /// Development mode: Put the generated interlocking into the cargo examples folder
+    #[structopt(long, short = "dev")]
+    development: bool,
+}
+
+fn main() -> anyhow::Result<()> {
+    let args = Opt::from_args();
+
+    let example_routes: Vec<DrivewayRepr> = vec![
         DrivewayRepr {
             target_state: vec![
-                (
+                TargetState(
                     "A".to_owned(),
                     TrackElement::Signal,
                     TrackElementState::Signal(SignalState::Ks1),
                 ),
-                (
+                TargetState(
                     "B".to_owned(),
                     TrackElement::Point,
                     TrackElementState::Point(PointState::Left),
                 ),
-                (
+                TargetState(
                     "C".to_owned(),
                     TrackElement::Signal,
                     TrackElementState::Signal(SignalState::Ks1),
@@ -32,17 +56,17 @@ fn main() -> Result<(), GenerationError> {
         },
         DrivewayRepr {
             target_state: vec![
-                (
+                TargetState(
                     "B".to_owned(),
                     TrackElement::Point,
                     TrackElementState::Point(PointState::Left),
                 ),
-                (
+                TargetState(
                     "C".to_owned(),
                     TrackElement::Signal,
                     TrackElementState::Signal(SignalState::Ks1),
                 ),
-                (
+                TargetState(
                     "D".to_owned(),
                     TrackElement::Signal,
                     TrackElementState::Signal(SignalState::Ks1),
@@ -53,17 +77,17 @@ fn main() -> Result<(), GenerationError> {
         },
         DrivewayRepr {
             target_state: vec![
-                (
+                TargetState(
                     "D".to_owned(),
                     TrackElement::Signal,
                     TrackElementState::Signal(SignalState::Ks1),
                 ),
-                (
+                TargetState(
                     "E".to_owned(),
                     TrackElement::Point,
                     TrackElementState::Point(PointState::Left),
                 ),
-                (
+                TargetState(
                     "F".to_owned(),
                     TrackElement::Signal,
                     TrackElementState::Signal(SignalState::Ks1),
@@ -74,17 +98,17 @@ fn main() -> Result<(), GenerationError> {
         },
         DrivewayRepr {
             target_state: vec![
-                (
+                TargetState(
                     "E".to_owned(),
                     TrackElement::Point,
                     TrackElementState::Point(PointState::Left),
                 ),
-                (
+                TargetState(
                     "G".to_owned(),
                     TrackElement::Signal,
                     TrackElementState::Signal(SignalState::Ks1),
                 ),
-                (
+                TargetState(
                     "H".to_owned(),
                     TrackElement::Signal,
                     TrackElementState::Signal(SignalState::Ks1),
@@ -94,32 +118,47 @@ fn main() -> Result<(), GenerationError> {
             end_signal_id: "H".to_owned(),
         },
     ];
+
+    let routes: Vec<_> = if args.example {
+        example_routes
+    } else {
+        let routes_json: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(args.input)?)?;
+
+        routes_json
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| DrivewayRepr::try_from(v).unwrap())
+            .collect()
+    };
+
     let generated = generate::generate(routes)?;
 
-    let mut is_development = false;
-    match std::env::var(Development_Env) {
-        Ok(_) => {
-            is_development = true;
-            println!("Development mode")},
-        Err(_) => ()
+    let is_development = std::env::var(DEVELOPMENT_ENV).is_ok() || args.development;
+    if is_development {
+        println!("Running in dev mode");
+
+        fs::create_dir_all("examples")?;
+
+        let mut fp = std::fs::File::create("examples/dev_ixl.rs").unwrap_or_else(|_| {
+            std::fs::OpenOptions::new()
+                .write(true)
+                .open("examples/dev_ixl.rs")
+                .unwrap()
+        });
+        fp.write_all(generated.as_bytes())?;
+    } else if let Some(output) = args.output {
+        let mut fp = std::fs::File::create(output.clone()).unwrap_or_else(|_| {
+            std::fs::OpenOptions::new()
+                .write(true)
+                .open(output)
+                .unwrap()
+        });
+        fp.write_all(generated.as_bytes())?;
+    } else {
+        println!("{}", generated);
     }
-
-    let path = if is_development {"examples"} else {"dst"};
-    let file_name = if is_development {"dev_ixl.rs"} else {"ixl.rs"};
-    let file_path = format!("{}/{}", path, file_name);
-
-    match std::fs::create_dir_all(path) {
-        Ok(_) => println!("Created directory {}", path),
-        Err(e) => panic!("Could not create directory {}. {}",path, e)
-    }
-
-    let mut fp = std::fs::File::create(file_path.clone()).unwrap_or_else(|_| {
-        std::fs::OpenOptions::new()
-            .write(true)
-            .open(file_path)
-            .unwrap()
-    });
-    fp.write_all(generated.as_bytes()).unwrap();
 
     Ok(())
 }
