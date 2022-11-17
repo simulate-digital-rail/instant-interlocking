@@ -16,13 +16,13 @@ const DEVELOPMENT_ENV: &str = "CODE_GENERATION_DEVELOPMENT_MODE";
 )]
 struct Opt {
     /// The JSON source for the generator
-    #[structopt(parse(from_os_str), required_unless("example"))]
-    input: PathBuf,
+    #[structopt(parse(from_os_str), required_unless = "example")]
+    input: Option<PathBuf>,
     /// Where to write the generated interlocking code
     #[structopt(long, short, parse(from_os_str))]
     output: Option<PathBuf>,
     /// Use the example data provided by this tool
-    #[structopt(long)]
+    #[structopt(long, short)]
     example: bool,
     /// Development mode: Put the generated interlocking into the cargo examples folder
     #[structopt(long, short = "dev")]
@@ -123,7 +123,7 @@ fn main() -> anyhow::Result<()> {
         example_routes
     } else {
         let routes_json: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(args.input)?)?;
+            serde_json::from_str(&std::fs::read_to_string(args.input.unwrap())?)?;
 
         routes_json
             .as_array()
