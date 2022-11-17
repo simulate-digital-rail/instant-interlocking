@@ -1,3 +1,5 @@
+import json
+
 from railwayroutegenerator.generator import generate_from_planpro
 from orm_planpro_converter.converter import ORMConverter
 
@@ -31,8 +33,8 @@ def generate_driveway_json():
                     route_json.append({"uuid": current_node.uuid, "type": "point", "state": "right"})
             previous_node = current_node
         output.append(route_json)
-    print(len(output))
-    print(output)
+    with open("driveways.json", "w", encoding="utf-8") as json_file:
+        json.dump(output, json_file)
 
 
 if __name__ == "__main__":
