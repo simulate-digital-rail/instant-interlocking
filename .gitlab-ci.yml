@@ -28,12 +28,12 @@ test:code_generation:
     - cd code_generation/
     - echo Generating interlocking code ...
     - cargo run
-    - cd .. 
+    - cd ../.. 
     - mkdir Interlocking
     - cd Interlocking/
     - cargo init
     - mkdir test
-    - mv ../code_generation/src/dev_test.rs test
+    - mv ../codegen/code_generation/src/dev_test.rs test
     - sed -i '1s/^/mod dev_test;\n/' src/main.rs
     - cargo test
 
