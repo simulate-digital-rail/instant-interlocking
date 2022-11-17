@@ -1,10 +1,11 @@
 from railwayroutegenerator.generator import generate_from_planpro
-
+from orm_planpro_converter.converter import ORMConverter
 
 def generate_driveway_json():
-    #with open("out.ppxml", "w") as planpro_file:
-    #    planpro = ORMConverter.run("52.39385615174401 13.049869537353517 52.3902158368756 13.049440383911135 52.38821222613622 13.073966503143312 52.392153883603726 13.074588775634767") # Potsdam Hbf Westseite
-    routes = generate_from_planpro("../out.ppxml", output_format="python-objects")
+    with open("out.ppxml", "w", encoding="utf-8") as planpro_file:
+        planpro = ORMConverter().run("52.39385615174401 13.049869537353517 52.3902158368756 13.049440383911135 52.38821222613622 13.073966503143312 52.392153883603726 13.074588775634767") # Potsdam Hbf Westseite
+        planpro_file.write(planpro)
+    routes = generate_from_planpro("out.ppxml", output_format="python-objects")
     output = []
     for route in routes:
         previous_node = route.start_signal.previous_node
