@@ -99,13 +99,14 @@ pub struct DrivewayRepr {
     pub end_signal_id: String,
 }
 
-pub fn generate(routes: Vec<DrivewayRepr>) -> Result<String, GenerationError> {
-    let mut track_elements: HashMap<&str, TrackElement> = HashMap::new();
-
-    for route in &routes {
+fn collect_track_elements(
+    routes: &Vec<DrivewayRepr>,
+) -> Result<HashMap<String, TrackElement>, GenerationError> {
+    let mut track_elements: HashMap<String, TrackElement> = HashMap::new();
+    for route in routes {
         for (id, elem, _) in &route.target_state {
             if !track_elements.contains_key(id.as_str()) {
-                track_elements.insert(id, *elem);
+                track_elements.insert(id.clone(), *elem);
             } else {
                 let existing_track_element = track_elements.get(id.as_str()).unwrap();
                 match (existing_track_element, elem) {
@@ -120,20 +121,47 @@ pub fn generate(routes: Vec<DrivewayRepr>) -> Result<String, GenerationError> {
             }
         }
     }
+    Ok(track_elements)
+}
+
+fn generate_setup_tokens(
+    track_element_tokens: Vec<TokenStream>,
+    driveway_tokens: Vec<TokenStream>,
+) -> TokenStream {
+    quote! {
+        let mut track_elements = HashMap::new();
+        #(#track_element_tokens)*
+
+        let mut driveway_manager = track_element::driveway::DrivewayManager::new(HashMap::new());
+        #(#driveway_tokens)*
+
+        driveway_manager.update_conflicting_driveways();
+    }
+}
+
+pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
+    let track_elements: HashMap<String, TrackElement> = collect_track_elements(&routes)?;
 
     let track_element_tokens: Vec<_> = track_elements
         .iter()
-        .map(|(id, element)| realize_element((*id, element)))
+        .map(|(id, element)| realize_element((id, element)))
         .collect();
 
-    let driveway_tokens: _ = routes.iter().map(realize_driveway);
+    let driveway_tokens: _ = routes
+        .iter()
+        .map(|state| realize_driveway(state))
+        .collect::<Vec<TokenStream>>();
 
+    let setup_tokens = generate_setup_tokens(track_element_tokens, driveway_tokens);
+    
     let tokens = quote! {
         extern crate track_element;
 
         use std::collections::HashMap;
         use std::cell::RefCell;
         use std::rc::Rc;
+        use std::panic;
+        use track_element::driveway::DrivewayManager;
 
         #[derive(Debug)]
         enum TrackElement {
@@ -141,14 +169,53 @@ pub fn generate(routes: Vec<DrivewayRepr>) -> Result<String, GenerationError> {
             Signal(Rc<RefCell<track_element::signal::Signal>>)
         }
 
+        #[test]
+        fn test_known_driveway() {
+            #setup_tokens
+            assert!(driveway_manager.set_driveway("A","C").is_ok());
+        }
+
+        #[test]
+        fn test_unknown_driveway() {
+            #setup_tokens
+            assert!(driveway_manager.set_driveway("A","X").is_err());
+        }
+
+    };
+
+    Ok(tokens.to_string())
+}
+
+pub fn generate(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
+    let track_elements: HashMap<String, TrackElement> = collect_track_elements(&routes)?;
+
+    let track_element_tokens: Vec<_> = track_elements
+        .iter()
+        .map(|(id, element)| realize_element((id, element)))
+        .collect();
+        
+        let driveway_tokens: _ = routes
+        .iter()
+        .map(|state| realize_driveway(state))
+        .collect::<Vec<TokenStream>>();
+
+        let setup_tokens = generate_setup_tokens(track_element_tokens, driveway_tokens);
+
+        let tokens = quote! {
+            extern crate track_element;
+            
+            use std::collections::HashMap;
+            use std::cell::RefCell;
+            use std::rc::Rc;
+            
+        #[derive(Debug)]
+        enum TrackElement {
+            Point(Rc<RefCell<track_element::point::Point>>),
+            Signal(Rc<RefCell<track_element::signal::Signal>>)
+        }
+        
         fn main(){
-            let mut track_elements = HashMap::new();
-            #(#track_element_tokens)*
-
-            let mut driveway_manager = track_element::driveway::DrivewayManager::new(HashMap::new());
-            #(#driveway_tokens)*
-
-            driveway_manager.update_conflicting_driveways();
+            #setup_tokens
 
             println!("TrackElements: {:?}", track_elements);
             println!("Driveways: {:?}", driveway_manager.get_driveway_ids().collect::<Vec<_>>());
