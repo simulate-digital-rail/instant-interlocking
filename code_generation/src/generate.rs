@@ -4,22 +4,14 @@ use std::collections::HashMap;
 use thiserror::Error;
 use track_element::{point::PointState, signal::SignalState};
 
-#[derive(Debug, Error)]
+use crate::driveway::{DrivewayRepr, TargetState, TrackElement, TrackElementState};
+
+#[derive(Clone, Debug, Error)]
 pub enum GenerationError {
     #[error("Two track elements with the same ID, but different types exist.")]
     DuplicateTrackElement,
-}
-
-#[derive(Clone, Copy)]
-pub enum TrackElement {
-    Point,
-    Signal,
-}
-
-#[derive(Clone, Copy)]
-pub enum TrackElementState {
-    Point(track_element::point::PointState),
-    Signal(track_element::signal::SignalState),
+    #[error("The driveway JSON was not valid.")]
+    InvalidJson,
 }
 
 fn unpack_track_element_signal(id: &str) -> TokenStream {
@@ -47,7 +39,7 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
     let point_states: Vec<_> = element_target_states
         .target_state
         .iter()
-        .filter_map(|(id, _, state)| {
+        .filter_map(|TargetState(id, _, state)| {
             if let TrackElementState::Point(p) = state {
                 let point = unpack_track_element_point(id);
                 Some(match p {
@@ -66,7 +58,7 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
     let signal_states: Vec<_> = element_target_states
         .target_state
         .iter()
-        .filter_map(|(id, _, state)| {
+        .filter_map(|TargetState(id, _, state)| {
             if let TrackElementState::Signal(s) = state {
                 let signal = unpack_track_element_signal(id);
                 Some(match s {
@@ -93,18 +85,12 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
     }
 }
 
-pub struct DrivewayRepr {
-    pub target_state: Vec<(String, TrackElement, TrackElementState)>,
-    pub start_signal_id: String,
-    pub end_signal_id: String,
-}
-
 fn collect_track_elements(
     routes: &Vec<DrivewayRepr>,
 ) -> Result<HashMap<String, TrackElement>, GenerationError> {
     let mut track_elements: HashMap<String, TrackElement> = HashMap::new();
     for route in routes {
-        for (id, elem, _) in &route.target_state {
+        for TargetState(id, elem, _) in &route.target_state {
             if !track_elements.contains_key(id.as_str()) {
                 track_elements.insert(id.clone(), *elem);
             } else {
@@ -140,7 +126,7 @@ fn generate_setup_tokens(
 }
 
 pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
-    let track_elements: HashMap<String, TrackElement> = collect_track_elements(&routes)?;
+    let track_elements: HashMap<String, TrackElement> = collect_track_elements(routes)?;
 
     let track_element_tokens: Vec<_> = track_elements
         .iter()
@@ -149,11 +135,11 @@ pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationEr
 
     let driveway_tokens: _ = routes
         .iter()
-        .map(|state| realize_driveway(state))
+        .map(realize_driveway)
         .collect::<Vec<TokenStream>>();
 
     let setup_tokens = generate_setup_tokens(track_element_tokens, driveway_tokens);
-    
+
     let tokens = quote! {
         extern crate track_element;
 
@@ -187,33 +173,33 @@ pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationEr
 }
 
 pub fn generate(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
-    let track_elements: HashMap<String, TrackElement> = collect_track_elements(&routes)?;
+    let track_elements: HashMap<String, TrackElement> = collect_track_elements(routes)?;
 
     let track_element_tokens: Vec<_> = track_elements
         .iter()
         .map(|(id, element)| realize_element((id, element)))
         .collect();
-        
-        let driveway_tokens: _ = routes
+
+    let driveway_tokens: _ = routes
         .iter()
-        .map(|state| realize_driveway(state))
+        .map(realize_driveway)
         .collect::<Vec<TokenStream>>();
 
-        let setup_tokens = generate_setup_tokens(track_element_tokens, driveway_tokens);
+    let setup_tokens = generate_setup_tokens(track_element_tokens, driveway_tokens);
 
-        let tokens = quote! {
+    let tokens = quote! {
             extern crate track_element;
-            
+
             use std::collections::HashMap;
             use std::cell::RefCell;
             use std::rc::Rc;
-            
+
         #[derive(Debug)]
         enum TrackElement {
             Point(Rc<RefCell<track_element::point::Point>>),
             Signal(Rc<RefCell<track_element::signal::Signal>>)
         }
-        
+
         fn main(){
             #setup_tokens
 
