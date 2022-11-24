@@ -27,7 +27,7 @@ test:code_generation:
   script:
     - cd code_generation/
     - echo Generating interlocking code ...
-    - cargo run
+    - cargo run -- -e
     - cd ../.. 
     - mkdir Interlocking
     - cd Interlocking/
