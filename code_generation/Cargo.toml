@@ -13,7 +13,6 @@ thiserror = "1.0.37"
 serde = "1.0.147"
 serde_json = "1.0.87"
 anyhow = "1.0.66"
-cargo = "0.66.0"
 
 [dependencies.track_element]
 path = "../track_element"

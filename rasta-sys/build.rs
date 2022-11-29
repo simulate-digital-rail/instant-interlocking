@@ -1,7 +1,10 @@
 use std::{env, path::PathBuf};
 
 fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=rasta-sys");
+
+    // Right now, we have to overwrite the cmake options because librasta will not compile with -Werror.
+    std::fs::copy("CompileOptions.cmake", "rasta-protocol/cmake/CompileOptions.cmake").expect("Failed to copy CmakeOptions file");
 
     let mut dst = cmake::build("rasta-protocol");
     dst.push("lib");
@@ -9,7 +12,6 @@ fn main() {
     println!("cargo:rustc-link-search=native={}", dst.display());
     println!("cargo:rustc-link-lib=dylib=rasta");
 
-    println!("cargo:warning={}", dst.display());
     let mut bindings = bindgen::Builder::default().clang_arg("-Irasta-protocol/src/rasta/headers");
     for header in
         std::fs::read_dir("rasta-protocol/src/rasta/headers").expect("Failed to read directory")
