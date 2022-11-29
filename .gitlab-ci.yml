@@ -15,6 +15,7 @@ image: "nucypher/rust-python:3.8.12"
 before_script:
    - apt-get update -yqq
    - apt-get install -yqq --no-install-recommends build-essential
+   - apt-get install --yes cmake
 
 # Use cargo to test the project
 test:track_elements:
