@@ -36,6 +36,12 @@ test:code_generation:
     - sed -i '1s/^/mod dev_test;\n/' src/main.rs
     - echo 'track_element = { path = "../codegen/track_element" }' >> Cargo.toml
     - cargo test
+    - cd ..
+test:rasta-sys:
+  script:
+    - cd rasta-sys/
+    - git submodule update --init
+    - cargo test --verbose
 
 # Optional: Use a third party library to generate gitlab junit reports
 # test:junit-report:

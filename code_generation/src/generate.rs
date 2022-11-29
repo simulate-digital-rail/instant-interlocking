@@ -143,7 +143,7 @@ pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationEr
     let tokens = quote! {
         extern crate track_element;
 
-        use std::collections::HashMap;
+        use std::collections::BTreeMap;
         use std::cell::RefCell;
         use std::rc::Rc;
         use std::panic;
