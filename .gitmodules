@@ -1,0 +1,3 @@
+[submodule "rasta-sys/rasta-protocol"]
+	path = rasta-sys/rasta-protocol
+	url = https://github.com/eulynx-live/rasta-protocol

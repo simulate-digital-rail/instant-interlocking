@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::iter::Iterator;
 use std::rc::Rc;
 
@@ -91,11 +91,11 @@ impl Driveway {
 }
 
 pub struct DrivewayManager {
-    driveways: HashMap<String, Rc<RefCell<Driveway>>>,
+    driveways: BTreeMap<String, Rc<RefCell<Driveway>>>,
 }
 
 impl DrivewayManager {
-    pub fn new(driveways: HashMap<String, Rc<RefCell<Driveway>>>) -> Self {
+    pub fn new(driveways: BTreeMap<String, Rc<RefCell<Driveway>>>) -> Self {
         Self { driveways }
     }
 

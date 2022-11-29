@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use thiserror::Error;
 use track_element::{point::PointState, signal::SignalState};
 
@@ -22,7 +22,7 @@ fn unpack_track_element_point(id: &str) -> TokenStream {
     quote! {match track_elements.get(#id).unwrap() {TrackElement::Point(p) => p.clone(), _ => unreachable!() }}
 }
 
-/// Create new TrackElements and add them to a HashMap
+/// Create new TrackElements and add them to a BTreeMap
 fn realize_element(element: (&str, &TrackElement)) -> TokenStream {
     let (id, kind) = element;
     match kind {
@@ -87,8 +87,8 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
 
 fn collect_track_elements(
     routes: &Vec<DrivewayRepr>,
-) -> Result<HashMap<String, TrackElement>, GenerationError> {
-    let mut track_elements: HashMap<String, TrackElement> = HashMap::new();
+) -> Result<BTreeMap<String, TrackElement>, GenerationError> {
+    let mut track_elements: BTreeMap<String, TrackElement> = BTreeMap::new();
     for route in routes {
         for TargetState(id, elem, _) in &route.target_state {
             if !track_elements.contains_key(id.as_str()) {
@@ -115,10 +115,10 @@ fn generate_setup_tokens(
     driveway_tokens: Vec<TokenStream>,
 ) -> TokenStream {
     quote! {
-        let mut track_elements = HashMap::new();
+        let mut track_elements = BTreeMap::new();
         #(#track_element_tokens)*
 
-        let mut driveway_manager = track_element::driveway::DrivewayManager::new(HashMap::new());
+        let mut driveway_manager = track_element::driveway::DrivewayManager::new(BTreeMap::new());
         #(#driveway_tokens)*
 
         driveway_manager.update_conflicting_driveways();
@@ -126,7 +126,7 @@ fn generate_setup_tokens(
 }
 
 pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
-    let track_elements: HashMap<String, TrackElement> = collect_track_elements(routes)?;
+    let track_elements: BTreeMap<String, TrackElement> = collect_track_elements(routes)?;
 
     let track_element_tokens: Vec<_> = track_elements
         .iter()
@@ -173,7 +173,7 @@ pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationEr
 }
 
 pub fn generate(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
-    let track_elements: HashMap<String, TrackElement> = collect_track_elements(routes)?;
+    let track_elements: BTreeMap<String, TrackElement> = collect_track_elements(routes)?;
 
     let track_element_tokens: Vec<_> = track_elements
         .iter()
@@ -190,7 +190,7 @@ pub fn generate(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
     let tokens = quote! {
             extern crate track_element;
 
-            use std::collections::HashMap;
+            use std::collections::BTreeMap;
             use std::cell::RefCell;
             use std::rc::Rc;
 
