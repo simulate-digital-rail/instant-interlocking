@@ -25,7 +25,7 @@ test:track_elements:
   script:
     - cd track_element/
     - rustc --version && cargo --version  # Print version info for debugging
-    - cargo test --workspace --verbose
+    - cargo test --verbose
     - cd ..
 test:code_generation:
   script:
