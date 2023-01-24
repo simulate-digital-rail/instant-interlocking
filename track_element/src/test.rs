@@ -18,7 +18,7 @@ fn set_point() {
 }
 #[test]
 fn set_signal() {
-    let mut s = Signal::new(SignalState::Hp0, SignalType::ToDo, "A".to_string());    
+    let mut s = Signal::new(SignalState::Hp0, SignalType::ToDo, "A".to_string());
     assert!(matches!(s.state(), SignalState::Hp0));
     s.set_state(SignalState::Ks1).unwrap();
     assert!(matches!(s.state(), SignalState::Ks1));
@@ -40,6 +40,7 @@ fn set_basic_driveway() {
             (p2.clone(), PointState::Left),
         ],
         vec![(s.clone(), SignalState::Ks1)],
+        vec![],
     );
 
     let mut dw = Driveway::new(Vec::new(), ts, s.clone(), s.clone());
@@ -67,14 +68,40 @@ fn set_basic_driveway() {
 }
 
 #[test]
-fn set_conflicting_driveway(){
-    let s1 = Rc::new(RefCell::new(Signal::new(SignalState::Hp0, SignalType::ToDo, "A".to_string())));
-    let s2 = Rc::new(RefCell::new(Signal::new(SignalState::Hp0, SignalType::ToDo, "B".to_string())));
-    let s12 = Rc::new(RefCell::new(Signal::new(SignalState::Hp0, SignalType::ToDo, "C".to_string())));
-    let s22 = Rc::new(RefCell::new(Signal::new(SignalState::Hp0, SignalType::ToDo, "D".to_string())));
+fn set_conflicting_driveway() {
+    let s1 = Rc::new(RefCell::new(Signal::new(
+        SignalState::Hp0,
+        SignalType::ToDo,
+        "A".to_string(),
+    )));
+    let s2 = Rc::new(RefCell::new(Signal::new(
+        SignalState::Hp0,
+        SignalType::ToDo,
+        "B".to_string(),
+    )));
+    let s12 = Rc::new(RefCell::new(Signal::new(
+        SignalState::Hp0,
+        SignalType::ToDo,
+        "C".to_string(),
+    )));
+    let s22 = Rc::new(RefCell::new(Signal::new(
+        SignalState::Hp0,
+        SignalType::ToDo,
+        "D".to_string(),
+    )));
 
-    let dw1 = Rc::new(RefCell::new(Driveway::new(Vec::new(), TargetState::new(Vec::new(), Vec::new()), s1, s2)));
-    let mut dw2 = Driveway::new(vec![dw1.clone()], TargetState::new(Vec::new(), Vec::new()), s12, s22);
+    let dw1 = Rc::new(RefCell::new(Driveway::new(
+        Vec::new(),
+        TargetState::new(Vec::new(), Vec::new(), vec![]),
+        s1,
+        s2,
+    )));
+    let mut dw2 = Driveway::new(
+        vec![dw1.clone()],
+        TargetState::new(Vec::new(), Vec::new(), vec![]),
+        s12,
+        s22,
+    );
 
     dw1.borrow_mut().set_way().unwrap();
     assert!(dw2.set_way().is_err())

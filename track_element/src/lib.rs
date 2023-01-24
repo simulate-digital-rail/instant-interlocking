@@ -1,7 +1,8 @@
+pub mod additional_signal;
+pub mod control_station;
 pub mod driveway;
 pub mod point;
 pub mod signal;
-pub mod control_station;
 
 #[cfg(test)]
 mod test;
@@ -21,9 +22,10 @@ impl Message {
 }
 
 #[derive(Debug)]
-pub enum TrackElementError{
+pub enum TrackElementError {
     DrivewayDoesNotExist,
-    HasConflictingDriveways
+    HasConflictingDriveways,
+    InvalidAdditionalSignalState,
 }
 
 impl std::fmt::Display for TrackElementError {
@@ -32,9 +34,7 @@ impl std::fmt::Display for TrackElementError {
     }
 }
 
-impl std::error::Error for TrackElementError {
-
-}
+impl std::error::Error for TrackElementError {}
 
 pub trait TrackElement {
     type State: Copy + Default;

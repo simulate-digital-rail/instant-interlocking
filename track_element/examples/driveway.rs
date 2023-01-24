@@ -22,6 +22,7 @@ fn main() {
             (p2.clone(), PointState::Left),
         ],
         vec![(s.clone(), SignalState::Ks1)],
+        vec![],
     );
 
     let mut dw = Driveway::new(Vec::new(), ts, s.clone(), s.clone());

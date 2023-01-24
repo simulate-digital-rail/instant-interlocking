@@ -1,11 +1,14 @@
-use track_element::{point::PointState, signal::SignalState};
+use track_element::{
+    additional_signal::AdditionalSignalZs3Symbol, point::PointState, signal::SignalState,
+};
 
 use crate::generate::GenerationError;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum TrackElement {
     Point,
     Signal,
+    AdditionalSignalZs3(bool, Vec<AdditionalSignalZs3Symbol>),
 }
 
 impl TryFrom<&serde_json::Value> for TrackElement {
@@ -16,6 +19,10 @@ impl TryFrom<&serde_json::Value> for TrackElement {
         match v {
             "point" => Ok(TrackElement::Point),
             "signal" => Ok(TrackElement::Signal),
+            "additional_signal_zs3" | "additional_signal_zs3v" => {
+                unreachable!()
+            }
+
             _ => Err(GenerationError::InvalidJson),
         }
     }
@@ -25,19 +32,28 @@ impl TryFrom<&serde_json::Value> for TrackElement {
 pub enum TrackElementState {
     Point(track_element::point::PointState),
     Signal(track_element::signal::SignalState),
+    AdditionalSignal(track_element::additional_signal::AdditionalSignalZs3Symbol),
 }
 
 impl TryFrom<&serde_json::Value> for TrackElementState {
     type Error = GenerationError;
 
     fn try_from(value: &serde_json::Value) -> Result<Self, Self::Error> {
-        let v = value.as_str().ok_or(GenerationError::InvalidJson)?;
-        match v {
-            "left" => Ok(TrackElementState::Point(PointState::Left)),
-            "right" => Ok(TrackElementState::Point(PointState::Right)),
-            "Hp0" => Ok(TrackElementState::Signal(SignalState::Hp0)),
-            "Ks1" => Ok(TrackElementState::Signal(SignalState::Ks1)),
-            "Ks2" => Ok(TrackElementState::Signal(SignalState::Ks2)),
+        match value {
+            serde_json::Value::Number(v) => {
+                let n = v.as_u64().unwrap() as u8;
+                let state = AdditionalSignalZs3Symbol::try_from(n)
+                    .map_err(|_| GenerationError::InvalidJson)?;
+                Ok(TrackElementState::AdditionalSignal(state))
+            }
+            serde_json::Value::String(v) => match v.as_str() {
+                "left" => Ok(TrackElementState::Point(PointState::Left)),
+                "right" => Ok(TrackElementState::Point(PointState::Right)),
+                "Hp0" => Ok(TrackElementState::Signal(SignalState::Hp0)),
+                "Ks1" => Ok(TrackElementState::Signal(SignalState::Ks1)),
+                "Ks2" => Ok(TrackElementState::Signal(SignalState::Ks2)),
+                _ => Err(GenerationError::InvalidJson),
+            },
             _ => Err(GenerationError::InvalidJson),
         }
     }
@@ -50,14 +66,36 @@ impl TryFrom<&serde_json::Value> for TargetState {
     type Error = GenerationError;
 
     fn try_from(value: &serde_json::Value) -> Result<Self, Self::Error> {
-        Ok(TargetState(
-            value["uuid"]
-                .as_str()
-                .ok_or(GenerationError::InvalidJson)?
-                .to_string(),
-            TrackElement::try_from(&value["type"])?,
-            TrackElementState::try_from(&value["state"])?,
-        ))
+        let element_type = value["type"].as_str().ok_or(GenerationError::InvalidJson)?;
+        match element_type {
+            "additional_signal_zs3" | "additional_signal_zs3v" => {
+                let is_v = element_type.ends_with("v");
+                let symbols = value["symbols"]
+                    .as_array()
+                    .ok_or(GenerationError::InvalidJson)?
+                    .iter()
+                    .map(|v| {
+                        AdditionalSignalZs3Symbol::try_from(v.as_u64().unwrap() as u8).unwrap()
+                    })
+                    .collect();
+                Ok(TargetState(
+                    value["uuid"]
+                        .as_str()
+                        .ok_or(GenerationError::InvalidJson)?
+                        .to_string(),
+                    TrackElement::AdditionalSignalZs3(is_v, symbols),
+                    TrackElementState::try_from(&value["state"])?,
+                ))
+            }
+            _ => Ok(TargetState(
+                value["uuid"]
+                    .as_str()
+                    .ok_or(GenerationError::InvalidJson)?
+                    .to_string(),
+                TrackElement::try_from(&value["type"])?,
+                TrackElementState::try_from(&value["state"])?,
+            )),
+        }
     }
 }
 
