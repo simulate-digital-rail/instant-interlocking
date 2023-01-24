@@ -16,7 +16,7 @@ impl Default for SignalState {
 
 #[derive(Clone, Copy, Debug)]
 pub enum SignalType {
-    ToDo
+    ToDo,
 }
 
 #[derive(Debug)]
@@ -30,7 +30,7 @@ impl Signal {
     pub fn new(state: SignalState, type_: SignalType, id: String) -> Self {
         Self { state, type_, id }
     }
-    pub fn reset(&mut self){
+    pub fn reset(&mut self) {
         self.state = SignalState::Hp0
     }
 }
@@ -46,7 +46,7 @@ impl TrackElement for Signal {
         self.state
     }
 
-    fn set_state(&mut self, new_state: Self::State) -> Result<(), TrackElementError>{
+    fn set_state(&mut self, new_state: Self::State) -> Result<(), TrackElementError> {
         self.state = new_state;
         println!("Signal {} is now {:?}", self.id(), self.state);
         Ok(())

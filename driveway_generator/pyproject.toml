@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "driveway-generator"
+version = "0.1.0"
+description = ""
+authors = ["HPI OSM <OSM@HPI>"]
+readme = "README.md"
+packages = [{include = "driveway_generator"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+orm-importer = {git = "https://github.com/simulate-digital-rail/orm-importer"}
+yaramo = {git = "https://github.com/simulate-digital-rail/yaramo"}
+railway-route-generator = {git = "https://github.com/simulate-digital-rail/railway-route-generator"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
