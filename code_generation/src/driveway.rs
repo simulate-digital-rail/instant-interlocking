@@ -69,7 +69,7 @@ impl TryFrom<&serde_json::Value> for TargetState {
         let element_type = value["type"].as_str().ok_or(GenerationError::InvalidJson)?;
         match element_type {
             "additional_signal_zs3" | "additional_signal_zs3v" => {
-                let is_v = element_type.ends_with("v");
+                let is_v = element_type.ends_with('v');
                 let symbols = value["symbols"]
                     .as_array()
                     .ok_or(GenerationError::InvalidJson)?
