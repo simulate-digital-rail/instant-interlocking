@@ -97,7 +97,7 @@ fn realize_element(element: (&str, &TrackElement)) -> TokenStream {
         TrackElement::AdditionalSignalZs3(is_v, symbols) => {
             let symbol_tokens: Vec<_> = symbols
                 .iter()
-                .map(|symbol| quote_additional_signal_zs3_symbol(symbol))
+                .map(quote_additional_signal_zs3_symbol)
                 .collect();
 
             quote! {
@@ -137,6 +137,20 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
                     SignalState::Ks1 => quote! {(#signal, track_element::signal::SignalState::Ks1)},
                     SignalState::Ks2 => quote! {(#signal, track_element::signal::SignalState::Ks2)},
                     SignalState::Hp0 => quote! {(#signal, track_element::signal::SignalState::Hp0)},
+                    SignalState::Hp0PlusSh1 => quote! {(#signal, track_element::signal::SignalState::Hp0PlusSh1)},
+                    SignalState::Hp0WithDrivingIndicator => quote! {(#signal, track_element::signal::SignalState::Hp0WithDrivingIndicator)},
+                    SignalState::Ks1Flashing => quote! {(#signal, track_element::signal::SignalState::Ks1Flashing)},
+                    SignalState::Ks1FlashingWithAdditionalLight => quote! {(#signal, track_element::signal::SignalState::Ks1FlashingWithAdditionalLight)},
+                    SignalState::Ks2WithAdditionalLight => quote! {(#signal, track_element::signal::SignalState::Ks2WithAdditionalLight)},
+                    SignalState::Sh1 => quote! {(#signal, track_element::signal::SignalState::Sh1)},
+                    SignalState::IdLight => quote! {(#signal, track_element::signal::SignalState::IdLight)},
+                    SignalState::Hp0Hv => quote! {(#signal, track_element::signal::SignalState::Hp0Hv)},
+                    SignalState::Hp1 => quote! {(#signal, track_element::signal::SignalState::Hp1)},
+                    SignalState::Hp2 => quote! {(#signal, track_element::signal::SignalState::Hp2)},
+                    SignalState::Vr0 => quote! {(#signal, track_element::signal::SignalState::Vr0)},
+                    SignalState::Vr1 => quote! {(#signal, track_element::signal::SignalState::Vr1)},
+                    SignalState::Vr2 => quote! {(#signal, track_element::signal::SignalState::Vr2)},
+                    SignalState::Off => quote! {(#signal, track_element::signal::SignalState::Off)},
                 })
             } else {
                 None
