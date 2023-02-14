@@ -4,7 +4,6 @@ use std::iter::Iterator;
 use std::rc::Rc;
 
 use crate::{
-    additional_signal::{AdditionalSignalZs3, AdditionalSignalZs3Symbol},
     point::{Point, PointState},
     signal::{Signal, SignalState},
 };
@@ -14,20 +13,14 @@ use crate::{TrackElement, TrackElementError};
 pub struct TargetState {
     points: Vec<(Rc<RefCell<Point>>, PointState)>,
     signals: Vec<(Rc<RefCell<Signal>>, SignalState)>,
-    additional_signals_zs3: Vec<(Rc<RefCell<AdditionalSignalZs3>>, AdditionalSignalZs3Symbol)>,
 }
 
 impl TargetState {
     pub fn new(
         points: Vec<(Rc<RefCell<Point>>, PointState)>,
         signals: Vec<(Rc<RefCell<Signal>>, SignalState)>,
-        additional_signals_zs3: Vec<(Rc<RefCell<AdditionalSignalZs3>>, AdditionalSignalZs3Symbol)>,
     ) -> Self {
-        Self {
-            points,
-            signals,
-            additional_signals_zs3,
-        }
+        Self { points, signals }
     }
 
     pub fn set_state(&mut self) -> Result<(), TrackElementError> {
@@ -45,15 +38,6 @@ impl TargetState {
             self.signals
                 .iter()
                 .for_each(|(elem, _)| elem.borrow_mut().reset())
-        }
-
-        if let Some(err) = self
-            .additional_signals_zs3
-            .iter()
-            .map(|(signal, state)| signal.borrow_mut().set_state(*state))
-            .find(|res| res.is_err())
-        {
-            return Err(err.unwrap_err());
         }
 
         Ok(())

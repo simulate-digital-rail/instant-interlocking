@@ -2,7 +2,7 @@ use std::{io::Write, path::PathBuf};
 
 use clap::Parser;
 use driveway::{DrivewayRepr, TargetState, TrackElement, TrackElementState};
-use track_element::{point::PointState, signal::SignalState};
+use track_element::{point::PointState, signal::MainSignalState};
 
 mod driveway;
 mod generate;
@@ -37,8 +37,12 @@ fn main() -> anyhow::Result<()> {
             target_state: vec![
                 TargetState(
                     "A".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
                 TargetState(
                     "B".to_owned(),
@@ -47,8 +51,12 @@ fn main() -> anyhow::Result<()> {
                 ),
                 TargetState(
                     "C".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
             ],
             start_signal_id: "A".to_owned(),
@@ -63,13 +71,21 @@ fn main() -> anyhow::Result<()> {
                 ),
                 TargetState(
                     "C".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
                 TargetState(
                     "D".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
             ],
             start_signal_id: "C".to_owned(),
@@ -79,8 +95,12 @@ fn main() -> anyhow::Result<()> {
             target_state: vec![
                 TargetState(
                     "D".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
                 TargetState(
                     "E".to_owned(),
@@ -89,8 +109,12 @@ fn main() -> anyhow::Result<()> {
                 ),
                 TargetState(
                     "F".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
             ],
             start_signal_id: "D".to_owned(),
@@ -105,13 +129,21 @@ fn main() -> anyhow::Result<()> {
                 ),
                 TargetState(
                     "G".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
                 TargetState(
                     "H".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
             ],
             start_signal_id: "G".to_owned(),

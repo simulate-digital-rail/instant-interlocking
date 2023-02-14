@@ -6,47 +6,33 @@ from orm_importer.importer import ORMImporter
 from railwayroutegenerator.routegenerator import RouteGenerator
 
 
-def generate_signal_state(
-    signal: signal.Signal, max_speed: int | None
-) -> tuple[dict, list[dict]]:
-    additional_signals = []
+def generate_signal_state(signal: signal.Signal, max_speed: int | None) -> dict:
+    target_state = {"main": "ks1"}
+    supported_states = {"zs3": [], "zs3v": []}
+    supported_states["main"] = [state.name for state in signal.supported_states]
     if max_speed:
         for add_signal in signal.additional_signals:
             if isinstance(add_signal, additional_signal.AdditionalSignalZs3):
+                supported_states["zs3"] = [s.value for s in add_signal.symbols]
                 symbol = next(
                     (s for s in add_signal.symbols if s.value == max_speed // 10), None
                 )
                 if symbol:
-                    additional_signals.append(
-                        {
-                            "uuid": add_signal.uuid,
-                            "type": "additional_signal_zs3",
-                            "symbols": [s.value for s in add_signal.symbols],
-                            "state": symbol.value,
-                        }
-                    )
+                    target_state["zs3"] = symbol.value
             if isinstance(add_signal, additional_signal.AdditionalSignalZs3v):
+                supported_states["zs3v"] = [s.value for s in add_signal.symbols]
                 symbol = next(
                     (s for s in add_signal.symbols if s.value == max_speed // 10), None
                 )
                 if symbol:
-                    additional_signals.append(
-                        {
-                            "uuid": add_signal.uuid,
-                            "type": "additional_signal_zs3v",
-                            "symbols": [s.value for s in add_signal.symbols],
-                            "state": symbol.value,
-                        }
-                    )
-    return (
-        {
-            "uuid": signal.uuid,
-            "name": signal.name,
-            "type": "signal",
-            "state": "Ks1",
-        },
-        additional_signals,
-    )
+                    target_state["zs3v"] = symbol.value
+    return {
+        "uuid": signal.uuid,
+        "name": signal.name,
+        "type": "signal",
+        "supported_states": supported_states,
+        "state": target_state,
+    }
 
 
 def generate_driveway_json():
@@ -59,12 +45,10 @@ def generate_driveway_json():
     for route in topology.routes:
         previous_node = route.start_signal.previous_node()
         route_json = []
-        signal_state, additional_signal_states = generate_signal_state(
-            route.start_signal, route.maximum_speed
-        )
+        signal_state = generate_signal_state(route.start_signal, route.maximum_speed)
         route_json.append(signal_state)
-        for signal in additional_signal_states:
-            route_json.append(signal)
+        # for signal in additional_signal_states:
+        #     route_json.append(signal)
         for edge in route.edges:
             # find out which node comes first on the driveway because edges can be oriented both ways
             if edge.node_a == previous_node:

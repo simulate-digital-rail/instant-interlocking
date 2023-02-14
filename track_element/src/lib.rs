@@ -1,4 +1,5 @@
-pub mod additional_signal;
+use signal::MainSignalState;
+
 pub mod control_station;
 pub mod driveway;
 pub mod point;
@@ -12,6 +13,7 @@ pub enum TrackElementError {
     DrivewayDoesNotExist,
     HasConflictingDriveways,
     InvalidAdditionalSignalState,
+    InvalidMainSignalState(MainSignalState),
 }
 
 impl std::fmt::Display for TrackElementError {

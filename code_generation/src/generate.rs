@@ -3,7 +3,8 @@ use quote::quote;
 use std::collections::BTreeMap;
 use thiserror::Error;
 use track_element::{
-    additional_signal::AdditionalSignalZs3Symbol, point::PointState, signal::SignalState,
+    point::PointState,
+    signal::{AdditionalSignalZs3Symbol, MainSignalState},
 };
 
 use crate::driveway::{DrivewayRepr, TargetState, TrackElement, TrackElementState};
@@ -24,62 +25,88 @@ fn unpack_track_element_point(id: &str) -> TokenStream {
     quote! {match track_elements.get(#id).unwrap() {TrackElement::Point(p) => p.clone(), _ => unreachable!() }}
 }
 
-fn unpack_track_element_signal_additional_signal_zs3(id: &str) -> TokenStream {
-    quote! {match track_elements.get(#id).unwrap() {TrackElement::AdditionalSignalZs3(a) => a.clone(), _ => unreachable!() }}
+fn quote_main_signal_state(state: &MainSignalState) -> TokenStream {
+    match state {
+        MainSignalState::Ks1 => quote! {track_element::signal::MainSignalState::Ks1},
+        MainSignalState::Ks2 => quote! {track_element::signal::MainSignalState::Ks2},
+        MainSignalState::Hp0 => quote! {track_element::signal::MainSignalState::Hp0},
+        MainSignalState::Hp0PlusSh1 => quote! {track_element::signal::MainSignalState::Hp0PlusSh1},
+        MainSignalState::Hp0WithDrivingIndicator => {
+            quote! {track_element::signal::MainSignalState::Hp0WithDrivingIndicator}
+        }
+        MainSignalState::Ks1Flashing => {
+            quote! {track_element::signal::MainSignalState::Ks1Flashing}
+        }
+        MainSignalState::Ks1FlashingWithAdditionalLight => {
+            quote! {track_element::signal::MainSignalState::Ks1FlashingWithAdditionalLight}
+        }
+        MainSignalState::Ks2WithAdditionalLight => {
+            quote! {track_element::signal::MainSignalState::Ks2WithAdditionalLight}
+        }
+        MainSignalState::Sh1 => quote! {track_element::signal::MainSignalState::Sh1},
+        MainSignalState::IdLight => quote! {track_element::signal::MainSignalState::IdLight},
+        MainSignalState::Hp0Hv => quote! {track_element::signal::MainSignalState::Hp0Hv},
+        MainSignalState::Hp1 => quote! {track_element::signal::MainSignalState::Hp1},
+        MainSignalState::Hp2 => quote! {track_element::signal::MainSignalState::Hp2},
+        MainSignalState::Vr0 => quote! {track_element::signal::MainSignalState::Vr0},
+        MainSignalState::Vr1 => quote! {track_element::signal::MainSignalState::Vr1},
+        MainSignalState::Vr2 => quote! {track_element::signal::MainSignalState::Vr2},
+        MainSignalState::Off => quote! {track_element::signal::MainSignalState::Off},
+    }
 }
 
 fn quote_additional_signal_zs3_symbol(symbol: &AdditionalSignalZs3Symbol) -> TokenStream {
     match symbol {
-        track_element::additional_signal::AdditionalSignalZs3Symbol::OFF => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::OFF}
+        track_element::signal::AdditionalSignalZs3Symbol::OFF => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::OFF}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::ONE => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::ONE}
+        track_element::signal::AdditionalSignalZs3Symbol::ONE => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::ONE}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::TWO => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::TWO}
+        track_element::signal::AdditionalSignalZs3Symbol::TWO => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::TWO}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::THREE => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::THREE}
+        track_element::signal::AdditionalSignalZs3Symbol::THREE => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::THREE}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::FOUR => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::FOUR}
+        track_element::signal::AdditionalSignalZs3Symbol::FOUR => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::FOUR}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::FIVE => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::FIVE}
+        track_element::signal::AdditionalSignalZs3Symbol::FIVE => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::FIVE}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::SIX => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::SIX}
+        track_element::signal::AdditionalSignalZs3Symbol::SIX => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::SIX}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::SEVEN => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::SEVEN}
+        track_element::signal::AdditionalSignalZs3Symbol::SEVEN => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::SEVEN}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::EIGHT => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::EIGHT}
+        track_element::signal::AdditionalSignalZs3Symbol::EIGHT => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::EIGHT}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::NINE => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::NINE}
+        track_element::signal::AdditionalSignalZs3Symbol::NINE => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::NINE}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::TEN => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::TEN}
+        track_element::signal::AdditionalSignalZs3Symbol::TEN => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::TEN}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::ELEVEN => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::ELEVEN}
+        track_element::signal::AdditionalSignalZs3Symbol::ELEVEN => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::ELEVEN}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::TWELVE => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::TWELVE}
+        track_element::signal::AdditionalSignalZs3Symbol::TWELVE => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::TWELVE}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::THIRTEEN => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::THIRTEEN}
+        track_element::signal::AdditionalSignalZs3Symbol::THIRTEEN => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::THIRTEEN}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::FOURTEEN => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::FOURTEEN}
+        track_element::signal::AdditionalSignalZs3Symbol::FOURTEEN => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::FOURTEEN}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::FIFTEEN => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::FIFTEEN}
+        track_element::signal::AdditionalSignalZs3Symbol::FIFTEEN => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::FIFTEEN}
         }
-        track_element::additional_signal::AdditionalSignalZs3Symbol::SIXTEEN => {
-            quote! {track_element::additional_signal::AdditionalSignalZs3Symbol::SIXTEEN}
+        track_element::signal::AdditionalSignalZs3Symbol::SIXTEEN => {
+            quote! {track_element::signal::AdditionalSignalZs3Symbol::SIXTEEN}
         }
     }
 }
@@ -91,17 +118,12 @@ fn realize_element(element: (&str, &TrackElement)) -> TokenStream {
         TrackElement::Point => quote! {
             track_elements.insert(#id, TrackElement::Point(Rc::new(RefCell::new(track_element::point::Point::new(track_element::point::PointState::default(), #id.to_owned())))));
         },
-        TrackElement::Signal => quote! {
-            track_elements.insert(#id, TrackElement::Signal(Rc::new(RefCell::new(track_element::signal::Signal::new(track_element::signal::SignalState::default(), track_element::signal::SignalType::ToDo, #id.to_owned())))));
-        },
-        TrackElement::AdditionalSignalZs3(is_v, symbols) => {
-            let symbol_tokens: Vec<_> = symbols
-                .iter()
-                .map(quote_additional_signal_zs3_symbol)
-                .collect();
-
+        TrackElement::Signal(main_states, zs3_states, zs3v_states) => {
+            let main_quoted = main_states.iter().map(quote_main_signal_state);
+            let zs3_quoted = zs3_states.iter().map(quote_additional_signal_zs3_symbol);
+            let zs3v_quoted = zs3v_states.iter().map(quote_additional_signal_zs3_symbol);
             quote! {
-                track_elements.insert(#id, TrackElement::AdditionalSignalZs3(Rc::new(RefCell::new(track_element::additional_signal::AdditionalSignalZs3::new(#is_v, vec![#(#symbol_tokens),*], track_element::additional_signal::AdditionalSignalZs3Symbol::default(), #id.to_owned())))));
+                track_elements.insert(#id, TrackElement::Signal(Rc::new(RefCell::new(track_element::signal::Signal::new(track_element::signal::SignalState::default(), track_element::signal::SupportedSignalStates::default().main(&mut vec![#(#main_quoted),*]).zs3(&mut vec![#(#zs3_quoted),*]).zs3v(&mut vec![#(#zs3v_quoted),*]), #id.to_owned())))));
             }
         }
     }
@@ -133,43 +155,18 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
         .filter_map(|TargetState(id, _, state)| {
             if let TrackElementState::Signal(s) = state {
                 let signal = unpack_track_element_signal(id);
-                Some(match s {
-                    SignalState::Ks1 => quote! {(#signal, track_element::signal::SignalState::Ks1)},
-                    SignalState::Ks2 => quote! {(#signal, track_element::signal::SignalState::Ks2)},
-                    SignalState::Hp0 => quote! {(#signal, track_element::signal::SignalState::Hp0)},
-                    SignalState::Hp0PlusSh1 => quote! {(#signal, track_element::signal::SignalState::Hp0PlusSh1)},
-                    SignalState::Hp0WithDrivingIndicator => quote! {(#signal, track_element::signal::SignalState::Hp0WithDrivingIndicator)},
-                    SignalState::Ks1Flashing => quote! {(#signal, track_element::signal::SignalState::Ks1Flashing)},
-                    SignalState::Ks1FlashingWithAdditionalLight => quote! {(#signal, track_element::signal::SignalState::Ks1FlashingWithAdditionalLight)},
-                    SignalState::Ks2WithAdditionalLight => quote! {(#signal, track_element::signal::SignalState::Ks2WithAdditionalLight)},
-                    SignalState::Sh1 => quote! {(#signal, track_element::signal::SignalState::Sh1)},
-                    SignalState::IdLight => quote! {(#signal, track_element::signal::SignalState::IdLight)},
-                    SignalState::Hp0Hv => quote! {(#signal, track_element::signal::SignalState::Hp0Hv)},
-                    SignalState::Hp1 => quote! {(#signal, track_element::signal::SignalState::Hp1)},
-                    SignalState::Hp2 => quote! {(#signal, track_element::signal::SignalState::Hp2)},
-                    SignalState::Vr0 => quote! {(#signal, track_element::signal::SignalState::Vr0)},
-                    SignalState::Vr1 => quote! {(#signal, track_element::signal::SignalState::Vr1)},
-                    SignalState::Vr2 => quote! {(#signal, track_element::signal::SignalState::Vr2)},
-                    SignalState::Off => quote! {(#signal, track_element::signal::SignalState::Off)},
-                })
+                let main_state = quote_main_signal_state(&s.main());
+                let zs3_state = quote_additional_signal_zs3_symbol(&s.zs3());
+                let zs3v_state = quote_additional_signal_zs3_symbol(&s.zs3v());
+                Some(
+                    quote! {(#signal, track_element::signal::SignalState::new(#main_state, track_element::signal::AdditionalSignalState::Off, #zs3_state, #zs3v_state))}, 
+                )
             } else {
                 None
             }
         })
         .collect();
-    let additional_signal_zs3_states: Vec<_> = element_target_states
-        .target_state
-        .iter()
-        .filter_map(|TargetState(id, _, state)| {
-            if let TrackElementState::AdditionalSignal(a) = state {
-                let additional_signal = unpack_track_element_signal_additional_signal_zs3(id);
-                let symbol = quote_additional_signal_zs3_symbol(a);
-                Some(quote! {(#additional_signal, #symbol)})
-            } else {
-                None
-            }
-        })
-        .collect();
+
     let start_signal_id = &element_target_states.start_signal_id;
     let start_signal_tokens = unpack_track_element_signal(start_signal_id);
     let end_signal_id = &element_target_states.end_signal_id;
@@ -177,8 +174,7 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
     quote! {
         let point_states = vec![#(#point_states),*];
         let signal_states = vec![#(#signal_states),*];
-        let additional_signal_zs3_states = vec![#(#additional_signal_zs3_states),*];
-        let target_state = track_element::driveway::TargetState::new(point_states, signal_states, additional_signal_zs3_states);
+        let target_state = track_element::driveway::TargetState::new(point_states, signal_states);
         let start_signal = #start_signal_tokens;
         let end_signal = #end_signal_tokens;
         driveway_manager.add(Rc::new(RefCell::new(track_element::driveway::Driveway::new(vec![], target_state, start_signal, end_signal))));
@@ -196,26 +192,13 @@ fn collect_track_elements(
             } else {
                 let existing_track_element = track_elements.get(id.as_str()).unwrap();
                 match (existing_track_element, elem) {
-                    (TrackElement::Point, TrackElement::Signal) => {
+                    (TrackElement::Point, TrackElement::Signal(_, _, _)) => {
                         return Err(GenerationError::DuplicateTrackElement)
                     }
-                    (TrackElement::Signal, TrackElement::Point) => {
-                        return Err(GenerationError::DuplicateTrackElement)
-                    }
-
-                    (TrackElement::Point, TrackElement::AdditionalSignalZs3(_, _)) => {
+                    (TrackElement::Signal(_, _, _), TrackElement::Point) => {
                         return Err(GenerationError::DuplicateTrackElement)
                     }
 
-                    (TrackElement::Signal, TrackElement::AdditionalSignalZs3(_, _)) => {
-                        return Err(GenerationError::DuplicateTrackElement)
-                    }
-                    (TrackElement::AdditionalSignalZs3(_, _), TrackElement::Point) => {
-                        return Err(GenerationError::DuplicateTrackElement)
-                    }
-                    (TrackElement::AdditionalSignalZs3(_, _), TrackElement::Signal) => {
-                        return Err(GenerationError::DuplicateTrackElement)
-                    }
                     _ => {}
                 }
             }
@@ -267,7 +250,6 @@ pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationEr
         enum TrackElement {
             Point(Rc<RefCell<track_element::point::Point>>),
             Signal(Rc<RefCell<track_element::signal::Signal>>),
-            AdditionalSignalZs3(Rc<RefCell<track_element::additional_signal::AdditionalSignalZs3>>),
         }
 
         #[test]
@@ -313,13 +295,12 @@ pub fn generate(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
         enum TrackElement {
             Point(Rc<RefCell<track_element::point::Point>>),
             Signal(Rc<RefCell<track_element::signal::Signal>>),
-            AdditionalSignalZs3(Rc<RefCell<track_element::additional_signal::AdditionalSignalZs3>>)
         }
 
         fn main(){
             #setup_tokens
 
-            println!("TrackElements: {:?}", track_elements);
+            println!("TrackElements: {track_elements:?}");
             println!("Driveways: {:?}", driveway_manager.get_driveway_ids().collect::<Vec<_>>());
 
             let control_station = track_element::control_station::ControlStation::new(driveway_manager);
