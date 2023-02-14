@@ -124,7 +124,7 @@ impl TryFrom<u8> for AdditionalSignalZs3Symbol {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0xFF => Ok(AdditionalSignalZs3Symbol::OFF),
+            0xFF | 0 => Ok(AdditionalSignalZs3Symbol::OFF),
             1 => Ok(AdditionalSignalZs3Symbol::ONE),
             2 => Ok(AdditionalSignalZs3Symbol::TWO),
             3 => Ok(AdditionalSignalZs3Symbol::THREE),

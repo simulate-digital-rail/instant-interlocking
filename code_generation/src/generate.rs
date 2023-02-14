@@ -14,7 +14,7 @@ pub enum GenerationError {
     #[error("Two track elements with the same ID, but different types exist.")]
     DuplicateTrackElement,
     #[error("The driveway JSON was not valid.")]
-    InvalidJson,
+    InvalidJson(String),
 }
 
 fn unpack_track_element_signal(id: &str) -> TokenStream {

@@ -4,28 +4,60 @@ import yaramo.signal as signal
 import yaramo.additional_signal as additional_signal
 from orm_importer.importer import ORMImporter
 from railwayroutegenerator.routegenerator import RouteGenerator
+from collections import defaultdict
 
 
 def generate_signal_state(signal: signal.Signal, max_speed: int | None) -> dict:
-    target_state = {"main": "ks1"}
-    supported_states = {"zs3": [], "zs3v": []}
+    target_state = {"main": "ks2"}
+    supported_states = defaultdict(list)
     supported_states["main"] = [state.name for state in signal.supported_states]
-    if max_speed:
-        for add_signal in signal.additional_signals:
-            if isinstance(add_signal, additional_signal.AdditionalSignalZs3):
-                supported_states["zs3"] = [s.value for s in add_signal.symbols]
-                symbol = next(
-                    (s for s in add_signal.symbols if s.value == max_speed // 10), None
+
+    for add_signal in signal.additional_signals:
+        if isinstance(add_signal, additional_signal.AdditionalSignalZs3):
+            supported_states["zs3"] = [s.value for s in add_signal.symbols]
+            if (
+                max_speed
+                and (
+                    symbol := additional_signal.AdditionalSignalZs3.AdditionalSignalSymbolZs3(
+                        max_speed // 10
+                    )
                 )
-                if symbol:
-                    target_state["zs3"] = symbol.value
-            if isinstance(add_signal, additional_signal.AdditionalSignalZs3v):
-                supported_states["zs3v"] = [s.value for s in add_signal.symbols]
-                symbol = next(
-                    (s for s in add_signal.symbols if s.value == max_speed // 10), None
+                in add_signal.symbols
+            ):
+                target_state["zs3"] = symbol.value
+        elif isinstance(add_signal, additional_signal.AdditionalSignalZs3v):
+            supported_states["zs3v"] = [s.value for s in add_signal.symbols]
+            if (
+                max_speed
+                and (
+                    symbol := additional_signal.AdditionalSignalZs3v.AdditionalSignalSymbolZs3v(
+                        max_speed // 10
+                    )
                 )
-                if symbol:
-                    target_state["zs3v"] = symbol.value
+                in add_signal.symbols
+            ):
+                target_state["zs3v"] = symbol.value
+        elif isinstance(
+            add_signal, additional_signal.AdditionalSignalZs2
+        ) or isinstance(add_signal, additional_signal.AdditionalSignalZs2v):
+            # Zs2 not supported in track_element yet
+            continue
+        else:
+            supported_states["additional"] += [
+                symbol.name for symbol in add_signal.symbols
+            ]
+
+    if "zs3" in target_state.keys() and "hp2" in supported_states["main"]:
+        target_state["main"] = "hp2"
+    elif "hp2" in supported_states["main"] and not "hp1" in supported_states["main"]:
+        target_state["main"] = "hp2"
+    elif "hp1" in supported_states["main"]:
+        target_state["main"] = "hp1"
+    elif "ks2" in supported_states["main"]:
+        target_state["main"] = "ks2"
+    else:
+        raise Exception("Main Signal should support any of (Hp1, Hp2, Ks2)")
+
     return {
         "uuid": signal.uuid,
         "name": signal.name,

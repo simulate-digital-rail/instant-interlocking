@@ -19,57 +19,74 @@ impl TryFrom<&serde_json::Value> for TrackElement {
     type Error = GenerationError;
 
     fn try_from(value: &serde_json::Value) -> Result<Self, Self::Error> {
-        let v = value["type"].as_str().ok_or(GenerationError::InvalidJson)?;
+        let v = value["type"].as_str().ok_or(GenerationError::InvalidJson(
+            "Missing or invalid element type".into(),
+        ))?;
         match v {
             "point" => Ok(TrackElement::Point),
             "signal" => {
                 let main_states = value["supported_states"]["main"]
                     .as_array()
-                    .ok_or(GenerationError::InvalidJson)?
+                    .ok_or(GenerationError::InvalidJson(
+                        "Missing or invalid main signal state".into(),
+                    ))?
                     .iter()
-                    .map(
-                        |state| match state.as_str().ok_or(GenerationError::InvalidJson)? {
+                    .map(|state| {
+                        match state.as_str().ok_or(GenerationError::InvalidJson(
+                            "Main signal state should be a string".into(),
+                        ))? {
                             "hp0" => Ok(MainSignalState::Hp0),
                             "hp1" => Ok(MainSignalState::Hp1),
                             "hp2" => Ok(MainSignalState::Hp2),
                             "ks1" => Ok(MainSignalState::Ks1),
                             "ks2" => Ok(MainSignalState::Ks2),
                             "sh1" => Ok(MainSignalState::Sh1),
-                            _ => Err(GenerationError::InvalidJson),
-                        },
-                    )
+                            _ => Err(GenerationError::InvalidJson(
+                                "Unknown main signal state".into(),
+                            )),
+                        }
+                    })
                     .map(|it| it.unwrap())
                     .collect();
 
                 let zs3_states = value["supported_states"]["zs3"]
                     .as_array()
-                    .ok_or(GenerationError::InvalidJson)?
+                    .unwrap_or(&vec![])
                     .iter()
                     .map(|state| {
                         AdditionalSignalZs3Symbol::try_from(
-                            state.as_u64().ok_or(GenerationError::InvalidJson)? as u8,
+                            state
+                                .as_u64()
+                                .unwrap_or(AdditionalSignalZs3Symbol::OFF as u64)
+                                as u8,
                         )
-                        .map_err(|_| GenerationError::InvalidJson)
+                        .map_err(|_| {
+                            GenerationError::InvalidJson("Missing or invalid zs3 state".into())
+                        })
                     })
                     .map(|it| it.unwrap())
                     .collect();
 
                 let zs3v_states = value["supported_states"]["zs3v"]
                     .as_array()
-                    .ok_or(GenerationError::InvalidJson)?
+                    .unwrap_or(&vec![])
                     .iter()
                     .map(|state| {
-                        AdditionalSignalZs3Symbol::try_from(
-                            state.as_u64().ok_or(GenerationError::InvalidJson)? as u8,
-                        )
-                        .map_err(|_| GenerationError::InvalidJson)
+                        AdditionalSignalZs3Symbol::try_from(state.as_u64().ok_or(
+                            GenerationError::InvalidJson("Missing or invalid zs3v state".into()),
+                        )? as u8)
+                        .map_err(|_| {
+                            GenerationError::InvalidJson("Missing or invalid zs3v state".into())
+                        })
                     })
                     .map(|it| it.unwrap())
                     .collect();
 
                 Ok(TrackElement::Signal(main_states, zs3_states, zs3v_states))
             }
-            _ => Err(GenerationError::InvalidJson),
+            _ => Err(GenerationError::InvalidJson(
+                "Unknown track element type".into(),
+            )),
         }
     }
 }
@@ -81,49 +98,61 @@ pub enum TrackElementState {
 }
 
 fn point_state(value: &serde_json::Value) -> Result<TrackElementState, GenerationError> {
-    match value.as_str().ok_or(GenerationError::InvalidJson)? {
+    match value.as_str().ok_or(GenerationError::InvalidJson(
+        "Point state should be a string".into(),
+    ))? {
         "left" => Ok(TrackElementState::Point(PointState::Left)),
         "right" => Ok(TrackElementState::Point(PointState::Right)),
-        _ => Err(GenerationError::InvalidJson),
+        _ => Err(GenerationError::InvalidJson("Unknown point state".into())),
     }
 }
 
 fn signal_state(value: &serde_json::Value) -> Result<TrackElementState, GenerationError> {
     if !value.is_object() {
-        return Err(GenerationError::InvalidJson);
+        return Err(GenerationError::InvalidJson(
+            "Signal state should be an object".into(),
+        ));
     }
 
-    let main_state = match value["main"].as_str().ok_or(GenerationError::InvalidJson)? {
+    let main_state = match value["main"].as_str().ok_or(GenerationError::InvalidJson(
+        "Main signal state should be a string".into(),
+    ))? {
         "hp0" => Ok(MainSignalState::Hp0),
         "hp1" => Ok(MainSignalState::Hp1),
         "hp2" => Ok(MainSignalState::Hp2),
         "ks1" => Ok(MainSignalState::Ks1),
         "ks2" => Ok(MainSignalState::Ks2),
         "sh1" => Ok(MainSignalState::Sh1),
-        _ => Err(GenerationError::InvalidJson),
+        _ => Err(GenerationError::InvalidJson(
+            "Unknown main signal state".into(),
+        )),
     }?;
 
-    let additional_state = match value["additional"]
-        .as_str()
-        .ok_or(GenerationError::InvalidJson)?
-    {
+    let additional_state = match value["additional"].as_str().unwrap_or("off") {
         "Zs1" => Ok(AdditionalSignalState::Zs1),
         "Zs7" => Ok(AdditionalSignalState::Zs7),
         "Zs8" => Ok(AdditionalSignalState::Zs8),
         "Zs6" => Ok(AdditionalSignalState::Zs6),
         "Zs13" => Ok(AdditionalSignalState::Zs13),
-        _ => Err(GenerationError::InvalidJson),
+        "off" => Ok(AdditionalSignalState::Off),
+        _ => Err(GenerationError::InvalidJson(
+            "Unknown additional signal state".into(),
+        )),
     }?;
 
     let zs3_state = AdditionalSignalZs3Symbol::try_from(
-        value["zs3"].as_u64().ok_or(GenerationError::InvalidJson)? as u8,
+        value["zs3"]
+            .as_u64()
+            .unwrap_or(AdditionalSignalZs3Symbol::OFF as u64) as u8,
     )
-    .map_err(|_| GenerationError::InvalidJson)?;
+    .map_err(|_| GenerationError::InvalidJson("Invalid Zs3 state".into()))?;
 
     let zs3v_state = AdditionalSignalZs3Symbol::try_from(
-        value["zs3v"].as_u64().ok_or(GenerationError::InvalidJson)? as u8,
+        value["zs3v"]
+            .as_u64()
+            .unwrap_or(AdditionalSignalZs3Symbol::OFF as u64) as u8,
     )
-    .map_err(|_| GenerationError::InvalidJson)?;
+    .map_err(|_| GenerationError::InvalidJson("Invalid Zs3v state".into()))?;
 
     let state = SignalState::new(main_state, additional_state, zs3_state, zs3v_state);
 
@@ -137,12 +166,14 @@ impl TryFrom<&serde_json::Value> for TargetState {
     type Error = GenerationError;
 
     fn try_from(value: &serde_json::Value) -> Result<Self, Self::Error> {
-        let element_type = value["type"].as_str().ok_or(GenerationError::InvalidJson)?;
+        let element_type = value["type"].as_str().ok_or(GenerationError::InvalidJson(
+            "Missing or invalid element type".into(),
+        ))?;
         match element_type {
             "signal" => Ok(TargetState(
                 value["uuid"]
                     .as_str()
-                    .ok_or(GenerationError::InvalidJson)?
+                    .ok_or(GenerationError::InvalidJson("Elements need a UUID".into()))?
                     .to_string(),
                 TrackElement::try_from(value)?,
                 signal_state(&value["state"])?,
@@ -150,12 +181,12 @@ impl TryFrom<&serde_json::Value> for TargetState {
             "point" => Ok(TargetState(
                 value["uuid"]
                     .as_str()
-                    .ok_or(GenerationError::InvalidJson)?
+                    .ok_or(GenerationError::InvalidJson("Elements need a UUID".into()))?
                     .to_string(),
                 TrackElement::Point,
                 point_state(&value["state"])?,
             )),
-            _ => Err(GenerationError::InvalidJson),
+            _ => Err(GenerationError::InvalidJson("Unknown element type".into())),
         }
     }
 }
@@ -170,7 +201,9 @@ impl TryFrom<&serde_json::Value> for DrivewayRepr {
     type Error = GenerationError;
 
     fn try_from(value: &serde_json::Value) -> Result<Self, Self::Error> {
-        let target_states_json = value.as_array().ok_or(GenerationError::InvalidJson)?;
+        let target_states_json = value.as_array().ok_or(GenerationError::InvalidJson(
+            "Target state should be an array".into(),
+        ))?;
         let target_state: Result<Vec<TargetState>, _> = target_states_json
             .iter()
             .map(TargetState::try_from)
@@ -180,7 +213,9 @@ impl TryFrom<&serde_json::Value> for DrivewayRepr {
         let start_signal_id = target_state
             .iter()
             .find(|TargetState(_, t, _)| matches!(t, TrackElement::Signal(_, _, _)))
-            .ok_or(GenerationError::InvalidJson)?
+            .ok_or(GenerationError::InvalidJson(
+                "Could not find start signal ID".into(),
+            ))?
             .0
             .to_string();
 
@@ -188,7 +223,9 @@ impl TryFrom<&serde_json::Value> for DrivewayRepr {
             .iter()
             .filter(|TargetState(_, t, _)| matches!(t, TrackElement::Signal(_, _, _)))
             .last()
-            .ok_or(GenerationError::InvalidJson)?
+            .ok_or(GenerationError::InvalidJson(
+                "Could not find end signal ID".into(),
+            ))?
             .0
             .to_string();
 
