@@ -1,44 +1,48 @@
 use std::{io::Write, path::PathBuf};
 
+use clap::Parser;
 use driveway::{DrivewayRepr, TargetState, TrackElement, TrackElementState};
-use structopt::StructOpt;
-use track_element::{point::PointState, signal::SignalState};
+use track_element::{point::PointState, signal::MainSignalState};
 
 mod driveway;
 mod generate;
 
 const DEVELOPMENT_ENV: &str = "CODE_GENERATION_DEVELOPMENT_MODE";
 
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, Parser)]
+#[command(
     name = "IXL Code Generator",
     about = "A tool to generate exceutable interlockings from JSON"
 )]
 struct Opt {
     /// The JSON source for the generator
-    #[structopt(parse(from_os_str), required_unless = "example")]
+    #[arg(value_hint = clap::ValueHint::FilePath, required_unless_present = "example")]
     input: Option<PathBuf>,
     /// Where to write the generated interlocking code
-    #[structopt(long, short, parse(from_os_str))]
+    #[arg(long, short, value_hint = clap::ValueHint::FilePath)]
     output: Option<PathBuf>,
-    /// Use the example data provided by this tool
-    #[structopt(long, short)]
+    /// Use the example data provided by this tool (ignores JSON input)
+    #[arg(long, short)]
     example: bool,
     /// Development mode: Put the generated interlocking into the cargo examples folder
-    #[structopt(long, short = "dev")]
+    #[arg(long)]
     development: bool,
 }
 
 fn main() -> anyhow::Result<()> {
-    let args = Opt::from_args();
+    let args = Opt::parse();
 
     let example_routes: Vec<DrivewayRepr> = vec![
         DrivewayRepr {
             target_state: vec![
                 TargetState(
                     "A".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
                 TargetState(
                     "B".to_owned(),
@@ -47,8 +51,12 @@ fn main() -> anyhow::Result<()> {
                 ),
                 TargetState(
                     "C".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
             ],
             start_signal_id: "A".to_owned(),
@@ -63,13 +71,21 @@ fn main() -> anyhow::Result<()> {
                 ),
                 TargetState(
                     "C".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
                 TargetState(
                     "D".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
             ],
             start_signal_id: "C".to_owned(),
@@ -79,8 +95,12 @@ fn main() -> anyhow::Result<()> {
             target_state: vec![
                 TargetState(
                     "D".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
                 TargetState(
                     "E".to_owned(),
@@ -89,8 +109,12 @@ fn main() -> anyhow::Result<()> {
                 ),
                 TargetState(
                     "F".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
             ],
             start_signal_id: "D".to_owned(),
@@ -105,13 +129,21 @@ fn main() -> anyhow::Result<()> {
                 ),
                 TargetState(
                     "G".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
                 TargetState(
                     "H".to_owned(),
-                    TrackElement::Signal,
-                    TrackElementState::Signal(SignalState::Ks1),
+                    TrackElement::Signal(
+                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
+                        vec![],
+                        vec![],
+                    ),
+                    TrackElementState::Signal((MainSignalState::Ks1).into()),
                 ),
             ],
             start_signal_id: "G".to_owned(),
@@ -144,11 +176,11 @@ fn main() -> anyhow::Result<()> {
     } else {
         "ixl.rs"
     };
-    let file_path = format!("{}/{}", path, file_name);
+    let file_path = format!("{path}/{file_name}");
 
     match std::fs::create_dir_all(path) {
-        Ok(_) => println!("Created directory {}", path),
-        Err(e) => panic!("Could not create directory {}. {}", path, e),
+        Ok(_) => println!("Created directory {path}"),
+        Err(e) => panic!("Could not create directory {path}. Error: {e}"),
     }
 
     // Interlocking

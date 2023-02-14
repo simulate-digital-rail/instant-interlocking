@@ -131,7 +131,7 @@ impl DrivewayManager {
     }
 
     fn driveway_id(a: &str, b: &str) -> String {
-        format!("{}-{}", a, b)
+        format!("{a}-{b}")
     }
 
     pub fn update_conflicting_driveways(&mut self) {

@@ -1,11 +1,12 @@
 use std::rc::Rc;
 use std::{borrow::Borrow, cell::RefCell};
 
+use crate::signal::{MainSignalState, SupportedSignalStates};
 use crate::{
     driveway::Driveway,
     driveway::TargetState,
     point::{Point, PointState},
-    signal::{Signal, SignalState, SignalType},
+    signal::{Signal, SignalState},
     TrackElement,
 };
 
@@ -18,10 +19,15 @@ fn set_point() {
 }
 #[test]
 fn set_signal() {
-    let mut s = Signal::new(SignalState::Hp0, SignalType::ToDo, "A".to_string());    
-    assert!(matches!(s.state(), SignalState::Hp0));
-    s.set_state(SignalState::Ks1).unwrap();
-    assert!(matches!(s.state(), SignalState::Ks1));
+    let mut s = Signal::new(
+        (MainSignalState::Hp0).into(),
+        SupportedSignalStates::default()
+            .main(&mut vec![MainSignalState::Hp0, MainSignalState::Ks1]),
+        "A".to_string(),
+    );
+    assert!(matches!(s.state().main(), MainSignalState::Hp0));
+    s.set_state((MainSignalState::Ks1).into()).unwrap();
+    assert!(matches!(s.state().main(), MainSignalState::Ks1));
 }
 
 #[test]
@@ -30,7 +36,8 @@ fn set_basic_driveway() {
     let p2 = Rc::new(RefCell::new(Point::new(PointState::Left, "P2".to_string())));
     let s = Rc::new(RefCell::new(Signal::new(
         SignalState::default(),
-        SignalType::ToDo,
+        SupportedSignalStates::default()
+            .main(&mut vec![MainSignalState::Hp0, MainSignalState::Ks1]),
         "S".to_string(),
     )));
 
@@ -39,7 +46,7 @@ fn set_basic_driveway() {
             (p1.clone(), PointState::Right),
             (p2.clone(), PointState::Left),
         ],
-        vec![(s.clone(), SignalState::Ks1)],
+        vec![(s.clone(), (MainSignalState::Ks1).into())],
     );
 
     let mut dw = Driveway::new(Vec::new(), ts, s.clone(), s.clone());
@@ -61,20 +68,51 @@ fn set_basic_driveway() {
     assert!(matches!(
         <Rc<RefCell<Signal>> as Borrow<RefCell<Signal>>>::borrow(&s)
             .borrow()
-            .state(),
-        SignalState::Ks1
+            .state()
+            .main(),
+        MainSignalState::Ks1
     ));
 }
 
 #[test]
-fn set_conflicting_driveway(){
-    let s1 = Rc::new(RefCell::new(Signal::new(SignalState::Hp0, SignalType::ToDo, "A".to_string())));
-    let s2 = Rc::new(RefCell::new(Signal::new(SignalState::Hp0, SignalType::ToDo, "B".to_string())));
-    let s12 = Rc::new(RefCell::new(Signal::new(SignalState::Hp0, SignalType::ToDo, "C".to_string())));
-    let s22 = Rc::new(RefCell::new(Signal::new(SignalState::Hp0, SignalType::ToDo, "D".to_string())));
+fn set_conflicting_driveway() {
+    let s1 = Rc::new(RefCell::new(Signal::new(
+        (MainSignalState::Hp0).into(),
+        SupportedSignalStates::default()
+            .main(&mut vec![MainSignalState::Hp0, MainSignalState::Ks1]),
+        "A".to_string(),
+    )));
+    let s2 = Rc::new(RefCell::new(Signal::new(
+        (MainSignalState::Hp0).into(),
+        SupportedSignalStates::default()
+            .main(&mut vec![MainSignalState::Hp0, MainSignalState::Ks1]),
+        "B".to_string(),
+    )));
+    let s12 = Rc::new(RefCell::new(Signal::new(
+        (MainSignalState::Hp0).into(),
+        SupportedSignalStates::default()
+            .main(&mut vec![MainSignalState::Hp0, MainSignalState::Ks1]),
+        "C".to_string(),
+    )));
+    let s22 = Rc::new(RefCell::new(Signal::new(
+        (MainSignalState::Hp0).into(),
+        SupportedSignalStates::default()
+            .main(&mut vec![MainSignalState::Hp0, MainSignalState::Ks1]),
+        "D".to_string(),
+    )));
 
-    let dw1 = Rc::new(RefCell::new(Driveway::new(Vec::new(), TargetState::new(Vec::new(), Vec::new()), s1, s2)));
-    let mut dw2 = Driveway::new(vec![dw1.clone()], TargetState::new(Vec::new(), Vec::new()), s12, s22);
+    let dw1 = Rc::new(RefCell::new(Driveway::new(
+        Vec::new(),
+        TargetState::new(Vec::new(), Vec::new()),
+        s1,
+        s2,
+    )));
+    let mut dw2 = Driveway::new(
+        vec![dw1.clone()],
+        TargetState::new(Vec::new(), Vec::new()),
+        s12,
+        s22,
+    );
 
     dw1.borrow_mut().set_way().unwrap();
     assert!(dw2.set_way().is_err())

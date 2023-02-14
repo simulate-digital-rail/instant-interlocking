@@ -23,7 +23,7 @@ impl ControlStation {
     pub fn start(&self) {
         let driveways = self.driveway_manager.get_driveway_ids().collect::<Vec<_>>();
         loop {
-            println!("Existing Driveways: {:?}", driveways);
+            println!("Existing Driveways: {driveways:?}");
             print!("> ");
             std::io::stdout().flush().unwrap();
             let mut input = String::new();
@@ -33,9 +33,9 @@ impl ControlStation {
             match cmd {
                 "set" => {
                     if let (Some(from), Some(to)) = (args.next(), args.next()) {
-                        println!("Setting driveway from {} to {}", from, to);
+                        println!("Setting driveway from {from} to {to}");
                         if let Err(e) = self.driveway_manager.set_driveway(from, to) {
-                            println!("An error occurred: {:?}", e);
+                            println!("An error occurred: {e:?}");
                         }
                     } else {
                         println!("Error: Please provide two valid signals.");
@@ -61,7 +61,7 @@ help
                     break;
                 }
                 _ => {
-                    println!("Sorry, command '{}' is unknown", cmd);
+                    println!("Sorry, command '{cmd}' is unknown");
                 }
             }
         }
