@@ -1,5 +1,6 @@
 import json
 import threading
+from urllib.parse import urlparse
 
 from flask import Flask, request, render_template, url_for, g
 
@@ -11,7 +12,8 @@ app = Flask(__name__)
 
 @app.route("/")
 def homepage():
-    return render_template('index.html', css_file=url_for('static', filename='pico.min.css'), axios_file=url_for('static', filename='axios.min.js'), modal_file=url_for('static', filename='modal.js'))
+    running_ixls = query_db("SELECT rowid, * FROM interlockings WHERE state=1")
+    return render_template('index.html', css_file=url_for('static', filename='pico.min.css'), axios_file=url_for('static', filename='axios.min.js'), modal_file=url_for('static', filename='modal.js'), running_ixls=running_ixls, hostname=urlparse(request.base_url).hostname)
 
 
 @app.route("/run")

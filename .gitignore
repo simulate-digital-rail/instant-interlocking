@@ -11,3 +11,7 @@ dev_*
 
 .idea/
 ixl/
+ixl_*/
+
+*.sqlite3
+code_generation/examples/*
