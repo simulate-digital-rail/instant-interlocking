@@ -17,6 +17,9 @@
     <body>
         <main class="container">
             <h2>Welcome to the interlocking generator!</h2>
+            <div id="generating" style="visibility: hidden">
+                Generating interlocking code...
+            </div>
             <div id="content">
                 <div id="map", style="height: 30em;"></div>
                 <div class="grid">
@@ -47,7 +50,10 @@
                                     <tr>
                                         <td>{{ ixl["rowid"] }}</td>
                                         <td>{{ ixl["title"] }}</td>
-                                        <td><a href="http://{{ hostname }}:{{ ixl['port'] }}" target="_blank" role="button">Start UI</a></td>
+                                        <td>
+                                            <a href="http://{{ hostname }}:{{ ixl['port'] }}" target="_blank" role="button">Start UI</a>
+                                            <a href="{{ base_url }}terminate/{{ ixl['rowid'] }}" role="button">Terminate</a>
+                                        </td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
@@ -138,16 +144,21 @@
                 axios.get("/run", {params : {polygon : document.getElementById("polygon").value, mode: event.target.value}})
                     .then(async response => {
                         event.target.setAttribute("aria-busy", "false");
-                        document.getElementById("content").innerHTML = "<p>Generating interlocking code...</p>";
+                        document.getElementById("content").style.visibility = "hidden";
+                        document.getElementById("generating").style.visibility = "visible";
                         wait_for_interlocking(response.data.id).then(result => {
                             if (result.state === "stopped") {
                                 handleError({"message": "Interlocking process has stopped."})
+                                document.getElementById("content").style.visibility = "visible";
+                                document.getElementById("generating").style.visibility = "hidden";
                             }
                             if (result.state === "running") {
-                                document.getElementById("content").innerHTML = "<p>Interlocking started!</p><div class='grid'><a href='http://" + document.location.hostname + ":" + result.port + "' target='_blank' role='button'>Open interlocking UI</a></div>"
+                                document.getElementById("generating").innerHTML = "<p>Interlocking started!</p><div class='grid'><a href='http://" + document.location.hostname + ":" + result.port + "' target='_blank' role='button'>Open interlocking UI</a></div>"
                             }
                             if (result.state === "failed") {
                                 handleError({"message": "Interlocking code generation failed."})
+                                document.getElementById("content").style.visibility = "visible";
+                                document.getElementById("generating").style.visibility = "hidden";
                             }
                         }).catch(handleError)
                     }).catch(handleError);
