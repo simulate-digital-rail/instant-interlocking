@@ -33,6 +33,27 @@
                         <button id="submit" class="submit-button" type="button">Generate and start interlocking</button>
                     </div>
                 </form>
+                {% if running_ixls %}
+                    <h3>Running interlockings</h3>
+                    <div id="running_ixls">
+                        <table>
+                            <thead>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Action</th>
+                            </thead>
+                            <tbody>
+                                {% for ixl in running_ixls %}
+                                    <tr>
+                                        <td>{{ ixl["rowid"] }}</td>
+                                        <td>{{ ixl["title"] }}</td>
+                                        <td><a href="http://{{ hostname }}:{{ ixl['port'] }}" target="_blank" role="button">Start UI</a></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
             </div>
 
             <dialog id="error_modal">
@@ -123,7 +144,7 @@
                                 handleError({"message": "Interlocking process has stopped."})
                             }
                             if (result.state === "running") {
-                                document.getElementById("content").innerHTML = "<p>Interlocking started at port " + result.port + "!</p>"
+                                document.getElementById("content").innerHTML = "<p>Interlocking started!</p><div class='grid'><a href='http://" + document.location.hostname + ":" + result.port + "' target='_blank' role='button'>Open interlocking UI</a></div>"
                             }
                             if (result.state === "failed") {
                                 handleError({"message": "Interlocking code generation failed."})

@@ -1,6 +1,6 @@
 import sqlite3
 from socket import socket
-from subprocess import Popen
+from subprocess import Popen, check_call
 from time import sleep
 
 from flask import g
@@ -32,22 +32,35 @@ def init_db():
         db.commit()
 
 
-def generate_interlocking(rowid, filename="driveways.json"):
-    # generate code
-    print("generating code")
+def generate_interlocking(rowid):
+    try:
+        # find free port
+        with socket() as s:
+            s.bind(('',0))
+            port = s.getsockname()[1]
 
-    # find free port
-    with socket() as s:
-        s.bind(('',0))
-        port = s.getsockname()[1]
+        # generate code
+        check_call(["cargo", "run", "--package", "code_generation", "--", "-o", f"ixl_{rowid}", "driveway_generator/driveway_generator/driveways.json"], cwd=r"../")
+        check_call(["cargo", "build"], cwd=f"../ixl_{rowid}")
 
-    # start process
-    Popen(["cargo", "run", "--example", "dev_ixl"], cwd=r"../code_generation")
+        # start interlocking
+        process = Popen(["cargo", "run"], cwd=f"../ixl_{rowid}")
 
-    # wait for interlocking to be online
-    sleep(1)
+        # wait for interlocking to be online
+        sleep(1)
 
-    # write to database
-    from ui.app import app
-    with app.app_context():
-        query_db(f"UPDATE interlockings SET port = {port}, state=1 WHERE ROWID={rowid}")
+        # write to database
+        from ui.app import app
+        with app.app_context():
+            query_db(f"UPDATE interlockings SET port = {port}, state=1 WHERE ROWID={rowid}")
+
+        process.wait()
+
+        with app.app_context():
+            query_db(f"UPDATE interlockings SET state=2 WHERE ROWID={rowid}")
+
+    except Exception as e:
+        print(e)
+        from ui.app import app
+        with app.app_context():
+            query_db(f"UPDATE interlockings SET state=3 WHERE ROWID={rowid}")
