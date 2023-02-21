@@ -1,10 +1,12 @@
 use std::{io::Write, path::PathBuf};
 
 use clap::Parser;
-use driveway::{DrivewayRepr, TargetState, TrackElement, TrackElementState};
-use track_element::{point::PointState, signal::MainSignalState};
+use driveway::{
+    DrivewayRepr, MainSignalState, PointState, SignalState, SupportedSignalStates, TrackElement,
+};
 
 mod driveway;
+
 mod generate;
 
 #[derive(Debug, Parser)]
@@ -29,135 +31,163 @@ fn main() -> anyhow::Result<()> {
 
     let example_routes: Vec<DrivewayRepr> = vec![
         DrivewayRepr {
-            target_state: vec![
-                TargetState(
-                    "A".to_owned(),
-                    TrackElement::Signal(
-                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
-                        vec![],
-                        vec![],
-                    ),
-                    TrackElementState::Signal((MainSignalState::Ks1).into()),
-                ),
-                TargetState(
-                    "B".to_owned(),
-                    TrackElement::Point,
-                    TrackElementState::Point(PointState::Left),
-                ),
-                TargetState(
-                    "C".to_owned(),
-                    TrackElement::Signal(
-                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
-                        vec![],
-                        vec![],
-                    ),
-                    TrackElementState::Signal((MainSignalState::Ks1).into()),
-                ),
+            start_signal: "A".to_owned(),
+            end_signal: "C".to_owned(),
+            states: vec![
+                TrackElement::Signal {
+                    uuid: "A".to_owned(),
+                    name: None,
+                    supported_states: SupportedSignalStates {
+                        main: vec![MainSignalState("Hp0".into()), MainSignalState("Ks1".into())],
+                        zs3: None,
+                        zs3v: None,
+                    },
+                    state: SignalState {
+                        main: MainSignalState("Ks1".into()),
+                        zs3: None,
+                        zs3v: None,
+                    },
+                },
+                TrackElement::Point {
+                    uuid: "B".to_owned(),
+                    state: PointState::Left,
+                },
+                TrackElement::Signal {
+                    uuid: "C".to_owned(),
+                    name: None,
+                    supported_states: SupportedSignalStates {
+                        main: vec![MainSignalState("Hp0".into()), MainSignalState("Ks1".into())],
+                        zs3: None,
+                        zs3v: None,
+                    },
+                    state: SignalState {
+                        main: MainSignalState("Ks1".into()),
+                        zs3: None,
+                        zs3v: None,
+                    },
+                },
             ],
-            start_signal_id: "A".to_owned(),
-            end_signal_id: "C".to_owned(),
         },
         DrivewayRepr {
-            target_state: vec![
-                TargetState(
-                    "B".to_owned(),
-                    TrackElement::Point,
-                    TrackElementState::Point(PointState::Left),
-                ),
-                TargetState(
-                    "C".to_owned(),
-                    TrackElement::Signal(
-                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
-                        vec![],
-                        vec![],
-                    ),
-                    TrackElementState::Signal((MainSignalState::Ks1).into()),
-                ),
-                TargetState(
-                    "D".to_owned(),
-                    TrackElement::Signal(
-                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
-                        vec![],
-                        vec![],
-                    ),
-                    TrackElementState::Signal((MainSignalState::Ks1).into()),
-                ),
+            start_signal: "C".to_owned(),
+            end_signal: "D".to_owned(),
+            states: vec![
+                TrackElement::Point {
+                    uuid: "B".to_owned(),
+                    state: PointState::Left,
+                },
+                TrackElement::Signal {
+                    uuid: "C".to_owned(),
+                    name: None,
+                    supported_states: SupportedSignalStates {
+                        main: vec![MainSignalState("Hp0".into()), MainSignalState("Ks1".into())],
+                        zs3: None,
+                        zs3v: None,
+                    },
+                    state: SignalState {
+                        main: MainSignalState("Ks1".into()),
+                        zs3: None,
+                        zs3v: None,
+                    },
+                },
+                TrackElement::Signal {
+                    uuid: "D".to_owned(),
+                    name: None,
+                    supported_states: SupportedSignalStates {
+                        main: vec![MainSignalState("Hp0".into()), MainSignalState("Ks1".into())],
+                        zs3: None,
+                        zs3v: None,
+                    },
+                    state: SignalState {
+                        main: MainSignalState("Ks1".into()),
+                        zs3: None,
+                        zs3v: None,
+                    },
+                },
             ],
-            start_signal_id: "C".to_owned(),
-            end_signal_id: "D".to_owned(),
         },
         DrivewayRepr {
-            target_state: vec![
-                TargetState(
-                    "D".to_owned(),
-                    TrackElement::Signal(
-                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
-                        vec![],
-                        vec![],
-                    ),
-                    TrackElementState::Signal((MainSignalState::Ks1).into()),
-                ),
-                TargetState(
-                    "E".to_owned(),
-                    TrackElement::Point,
-                    TrackElementState::Point(PointState::Left),
-                ),
-                TargetState(
-                    "F".to_owned(),
-                    TrackElement::Signal(
-                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
-                        vec![],
-                        vec![],
-                    ),
-                    TrackElementState::Signal((MainSignalState::Ks1).into()),
-                ),
+            start_signal: "D".to_owned(),
+            end_signal: "F".to_owned(),
+            states: vec![
+                TrackElement::Signal {
+                    uuid: "D".to_owned(),
+                    name: None,
+                    supported_states: SupportedSignalStates {
+                        main: vec![MainSignalState("Hp0".into()), MainSignalState("Ks1".into())],
+                        zs3: None,
+                        zs3v: None,
+                    },
+                    state: SignalState {
+                        main: MainSignalState("Ks1".into()),
+                        zs3: None,
+                        zs3v: None,
+                    },
+                },
+                TrackElement::Point {
+                    uuid: "E".to_owned(),
+                    state: PointState::Left,
+                },
+                TrackElement::Signal {
+                    uuid: "F".to_owned(),
+                    name: None,
+                    supported_states: SupportedSignalStates {
+                        main: vec![MainSignalState("Hp0".into()), MainSignalState("Ks1".into())],
+                        zs3: None,
+                        zs3v: None,
+                    },
+                    state: SignalState {
+                        main: MainSignalState("Ks1".into()),
+                        zs3: None,
+                        zs3v: None,
+                    },
+                },
             ],
-            start_signal_id: "D".to_owned(),
-            end_signal_id: "F".to_owned(),
         },
         DrivewayRepr {
-            target_state: vec![
-                TargetState(
-                    "E".to_owned(),
-                    TrackElement::Point,
-                    TrackElementState::Point(PointState::Left),
-                ),
-                TargetState(
-                    "G".to_owned(),
-                    TrackElement::Signal(
-                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
-                        vec![],
-                        vec![],
-                    ),
-                    TrackElementState::Signal((MainSignalState::Ks1).into()),
-                ),
-                TargetState(
-                    "H".to_owned(),
-                    TrackElement::Signal(
-                        vec![MainSignalState::Hp0, MainSignalState::Ks1],
-                        vec![],
-                        vec![],
-                    ),
-                    TrackElementState::Signal((MainSignalState::Ks1).into()),
-                ),
+            start_signal: "G".to_owned(),
+            end_signal: "H".to_owned(),
+            states: vec![
+                TrackElement::Point {
+                    uuid: "E".to_owned(),
+                    state: PointState::Left,
+                },
+                TrackElement::Signal {
+                    uuid: "G".to_owned(),
+                    name: None,
+                    supported_states: SupportedSignalStates {
+                        main: vec![MainSignalState("Hp0".into()), MainSignalState("Ks1".into())],
+                        zs3: None,
+                        zs3v: None,
+                    },
+                    state: SignalState {
+                        main: MainSignalState("Ks1".into()),
+                        zs3: None,
+                        zs3v: None,
+                    },
+                },
+                TrackElement::Signal {
+                    uuid: "H".to_owned(),
+                    name: None,
+                    supported_states: SupportedSignalStates {
+                        main: vec![MainSignalState("Hp0".into()), MainSignalState("Ks1".into())],
+                        zs3: None,
+                        zs3v: None,
+                    },
+                    state: SignalState {
+                        main: MainSignalState("Ks1".into()),
+                        zs3: None,
+                        zs3v: None,
+                    },
+                },
             ],
-            start_signal_id: "G".to_owned(),
-            end_signal_id: "H".to_owned(),
         },
     ];
 
     let routes: Vec<_> = if args.example {
         example_routes
     } else {
-        let routes_json: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(args.input.unwrap())?)?;
-
-        routes_json
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|v| DrivewayRepr::try_from(v).unwrap())
-            .collect()
+        serde_json::from_str(&std::fs::read_to_string(args.input.clone().unwrap())?)?
     };
 
     let generated = generate::generate(&routes)?;

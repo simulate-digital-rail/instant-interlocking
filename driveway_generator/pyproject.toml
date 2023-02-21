@@ -11,6 +11,8 @@ python = "^3.10"
 orm-importer = {git = "https://github.com/simulate-digital-rail/orm-importer"}
 yaramo = {git = "https://github.com/simulate-digital-rail/yaramo"}
 railway-route-generator = {git = "https://github.com/simulate-digital-rail/railway-route-generator"}
+vacancy-section-generator = {git = "https://github.com/simulate-digital-rail/vacancy-section-generator"}
+
 
 
 [build-system]

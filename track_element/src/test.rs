@@ -4,7 +4,7 @@ use std::{borrow::Borrow, cell::RefCell};
 use crate::signal::{MainSignalState, SupportedSignalStates};
 use crate::{
     driveway::Driveway,
-    driveway::TargetState,
+    driveway::DrivewayState,
     point::{Point, PointState},
     signal::{Signal, SignalState},
     TrackElement,
@@ -41,15 +41,16 @@ fn set_basic_driveway() {
         "S".to_string(),
     )));
 
-    let ts = TargetState::new(
+    let ts = DrivewayState::new(
         vec![
             (p1.clone(), PointState::Right),
             (p2.clone(), PointState::Left),
         ],
         vec![(s.clone(), (MainSignalState::Ks1).into())],
+        vec![],
     );
 
-    let mut dw = Driveway::new(Vec::new(), ts, s.clone(), s.clone());
+    let mut dw = Driveway::new(Vec::new(), ts, "S".to_string(), "S".to_string());
     dw.set_way().unwrap();
 
     // These types are only needed in test cases like this - They do not appear in the actual generated code.
@@ -103,15 +104,15 @@ fn set_conflicting_driveway() {
 
     let dw1 = Rc::new(RefCell::new(Driveway::new(
         Vec::new(),
-        TargetState::new(Vec::new(), Vec::new()),
-        s1,
-        s2,
+        DrivewayState::new(Vec::new(), Vec::new(), Vec::new()),
+        "A".to_string(),
+        "B".to_string(),
     )));
     let mut dw2 = Driveway::new(
         vec![dw1.clone()],
-        TargetState::new(Vec::new(), Vec::new()),
-        s12,
-        s22,
+        DrivewayState::new(Vec::new(), Vec::new(), Vec::new()),
+        "C".to_string(),
+        "D".to_string(),
     );
 
     dw1.borrow_mut().set_way().unwrap();

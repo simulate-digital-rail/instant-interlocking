@@ -1,238 +1,329 @@
-use track_element::{
-    point::PointState,
-    signal::{AdditionalSignalState, AdditionalSignalZs3Symbol, MainSignalState, SignalState},
-};
+use proc_macro2::TokenStream;
+use quote::quote;
+use serde::Deserialize;
 
 use crate::generate::GenerationError;
 
-#[derive(Clone)]
-pub enum TrackElement {
-    Point,
-    Signal(
-        Vec<MainSignalState>,
-        Vec<AdditionalSignalZs3Symbol>,
-        Vec<AdditionalSignalZs3Symbol>,
-    ),
+pub trait Realize {
+    fn realize(&self) -> TokenStream;
 }
 
-impl TryFrom<&serde_json::Value> for TrackElement {
-    type Error = GenerationError;
+#[derive(Deserialize, Debug)]
+pub struct DrivewayRepr {
+    pub start_signal: String,
+    pub end_signal: String,
+    pub states: Vec<TrackElement>,
+}
 
-    fn try_from(value: &serde_json::Value) -> Result<Self, Self::Error> {
-        let v = value["type"].as_str().ok_or(GenerationError::InvalidJson(
-            "Missing or invalid element type".into(),
-        ))?;
-        match v {
-            "point" => Ok(TrackElement::Point),
-            "signal" => {
-                let main_states = value["supported_states"]["main"]
-                    .as_array()
-                    .ok_or(GenerationError::InvalidJson(
-                        "Missing or invalid main signal state".into(),
-                    ))?
+#[derive(Deserialize, Debug, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum TrackElement {
+    Point {
+        uuid: String,
+        state: PointState,
+    },
+
+    Signal {
+        uuid: String,
+        name: Option<String>,
+        supported_states: SupportedSignalStates,
+        state: SignalState,
+    },
+
+    VacancySection {
+        uuid: String,
+        state: VacancySectionState,
+        previous_signals: Vec<String>,
+    },
+}
+
+impl TrackElement {
+    pub fn id(&self) -> &str {
+        match self {
+            TrackElement::Point { uuid, .. } => uuid,
+            TrackElement::Signal { uuid, .. } => uuid,
+            TrackElement::VacancySection { uuid, .. } => uuid,
+        }
+    }
+}
+
+impl Realize for TrackElement {
+    fn realize(&self) -> TokenStream {
+        match self {
+            TrackElement::Point { uuid, .. } => {
+                quote! {track_element::point::Point::new_rc(track_element::point::PointState::default(), #uuid.to_string())}
+            }
+            TrackElement::Signal {
+                uuid,
+                name,
+                supported_states,
+                ..
+            } => {
+                let supported_states = supported_states.realize();
+                quote! {
+                    track_element::signal::Signal::new_rc(track_element::signal::SignalState::default(), #supported_states, #uuid.to_string())
+                }
+            }
+            TrackElement::VacancySection {
+                uuid,
+                previous_signals,
+                ..
+            } => {
+                let prev_signals: Vec<_> = previous_signals
                     .iter()
-                    .map(|state| {
-                        match state.as_str().ok_or(GenerationError::InvalidJson(
-                            "Main signal state should be a string".into(),
-                        ))? {
-                            "hp0" => Ok(MainSignalState::Hp0),
-                            "hp1" => Ok(MainSignalState::Hp1),
-                            "hp2" => Ok(MainSignalState::Hp2),
-                            "ks1" => Ok(MainSignalState::Ks1),
-                            "ks2" => Ok(MainSignalState::Ks2),
-                            "sh1" => Ok(MainSignalState::Sh1),
-                            _ => Err(GenerationError::InvalidJson(
-                                "Unknown main signal state".into(),
-                            )),
+                    .map(|signal| {
+                        quote! {
+                            Some(match track_elements.get(#signal).unwrap() {
+                                TrackElement::Signal(signal) => signal.clone(),
+                                _ => unreachable!()
+                            })
                         }
                     })
-                    .map(|it| it.unwrap())
                     .collect();
 
-                let zs3_states = value["supported_states"]["zs3"]
-                    .as_array()
-                    .unwrap_or(&vec![])
-                    .iter()
-                    .map(|state| {
-                        AdditionalSignalZs3Symbol::try_from(
-                            state
-                                .as_u64()
-                                .unwrap_or(AdditionalSignalZs3Symbol::OFF as u64)
-                                as u8,
-                        )
-                        .map_err(|_| {
-                            GenerationError::InvalidJson("Missing or invalid zs3 state".into())
-                        })
-                    })
-                    .map(|it| it.unwrap())
-                    .collect();
-
-                let zs3v_states = value["supported_states"]["zs3v"]
-                    .as_array()
-                    .unwrap_or(&vec![])
-                    .iter()
-                    .map(|state| {
-                        AdditionalSignalZs3Symbol::try_from(state.as_u64().ok_or(
-                            GenerationError::InvalidJson("Missing or invalid zs3v state".into()),
-                        )? as u8)
-                        .map_err(|_| {
-                            GenerationError::InvalidJson("Missing or invalid zs3v state".into())
-                        })
-                    })
-                    .map(|it| it.unwrap())
-                    .collect();
-
-                Ok(TrackElement::Signal(main_states, zs3_states, zs3v_states))
+                quote! {
+                    track_element::vacancy_section::VacancySection::new_rc(#uuid.to_string(), track_element::vacancy_section::VacancySectionState::default(), vec![#(#prev_signals),*])
+                }
             }
-            _ => Err(GenerationError::InvalidJson(
-                "Unknown track element type".into(),
-            )),
         }
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum TrackElementState {
-    Point(track_element::point::PointState),
-    Signal(track_element::signal::SignalState),
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct SignalState {
+    pub main: MainSignalState,
+    pub zs3: Option<AdditionalSignalZs3Symbol>,
+    pub zs3v: Option<AdditionalSignalZs3Symbol>,
 }
 
-fn point_state(value: &serde_json::Value) -> Result<TrackElementState, GenerationError> {
-    match value.as_str().ok_or(GenerationError::InvalidJson(
-        "Point state should be a string".into(),
-    ))? {
-        "left" => Ok(TrackElementState::Point(PointState::Left)),
-        "right" => Ok(TrackElementState::Point(PointState::Right)),
-        _ => Err(GenerationError::InvalidJson("Unknown point state".into())),
-    }
-}
-
-fn signal_state(value: &serde_json::Value) -> Result<TrackElementState, GenerationError> {
-    if !value.is_object() {
-        return Err(GenerationError::InvalidJson(
-            "Signal state should be an object".into(),
-        ));
-    }
-
-    let main_state = match value["main"].as_str().ok_or(GenerationError::InvalidJson(
-        "Main signal state should be a string".into(),
-    ))? {
-        "hp0" => Ok(MainSignalState::Hp0),
-        "hp1" => Ok(MainSignalState::Hp1),
-        "hp2" => Ok(MainSignalState::Hp2),
-        "ks1" => Ok(MainSignalState::Ks1),
-        "ks2" => Ok(MainSignalState::Ks2),
-        "sh1" => Ok(MainSignalState::Sh1),
-        _ => Err(GenerationError::InvalidJson(
-            "Unknown main signal state".into(),
-        )),
-    }?;
-
-    let additional_state = match value["additional"].as_str().unwrap_or("off") {
-        "Zs1" => Ok(AdditionalSignalState::Zs1),
-        "Zs7" => Ok(AdditionalSignalState::Zs7),
-        "Zs8" => Ok(AdditionalSignalState::Zs8),
-        "Zs6" => Ok(AdditionalSignalState::Zs6),
-        "Zs13" => Ok(AdditionalSignalState::Zs13),
-        "off" => Ok(AdditionalSignalState::Off),
-        _ => Err(GenerationError::InvalidJson(
-            "Unknown additional signal state".into(),
-        )),
-    }?;
-
-    let zs3_state = AdditionalSignalZs3Symbol::try_from(
-        value["zs3"]
-            .as_u64()
-            .unwrap_or(AdditionalSignalZs3Symbol::OFF as u64) as u8,
-    )
-    .map_err(|_| GenerationError::InvalidJson("Invalid Zs3 state".into()))?;
-
-    let zs3v_state = AdditionalSignalZs3Symbol::try_from(
-        value["zs3v"]
-            .as_u64()
-            .unwrap_or(AdditionalSignalZs3Symbol::OFF as u64) as u8,
-    )
-    .map_err(|_| GenerationError::InvalidJson("Invalid Zs3v state".into()))?;
-
-    let state = SignalState::new(main_state, additional_state, zs3_state, zs3v_state);
-
-    Ok(TrackElementState::Signal(state))
-}
-
-#[derive(Clone)]
-pub struct TargetState(pub String, pub TrackElement, pub TrackElementState);
-
-impl TryFrom<&serde_json::Value> for TargetState {
-    type Error = GenerationError;
-
-    fn try_from(value: &serde_json::Value) -> Result<Self, Self::Error> {
-        let element_type = value["type"].as_str().ok_or(GenerationError::InvalidJson(
-            "Missing or invalid element type".into(),
-        ))?;
-        match element_type {
-            "signal" => Ok(TargetState(
-                value["uuid"]
-                    .as_str()
-                    .ok_or(GenerationError::InvalidJson("Elements need a UUID".into()))?
-                    .to_string(),
-                TrackElement::try_from(value)?,
-                signal_state(&value["state"])?,
-            )),
-            "point" => Ok(TargetState(
-                value["uuid"]
-                    .as_str()
-                    .ok_or(GenerationError::InvalidJson("Elements need a UUID".into()))?
-                    .to_string(),
-                TrackElement::Point,
-                point_state(&value["state"])?,
-            )),
-            _ => Err(GenerationError::InvalidJson("Unknown element type".into())),
+impl Realize for SignalState {
+    fn realize(&self) -> TokenStream {
+        let main = self.main.realize();
+        let zs3 = match &self.zs3 {
+            Some(zs3) => zs3.realize(),
+            None => AdditionalSignalZs3Symbol(0).realize(),
+        };
+        let zs3v = match &self.zs3v {
+            Some(zs3v) => zs3v.realize(),
+            None => AdditionalSignalZs3Symbol(0).realize(),
+        };
+        quote! {
+            track_element::signal::SignalState::new(#main, track_element::signal::AdditionalSignalState::Off, #zs3, #zs3v)
         }
     }
 }
 
-pub struct DrivewayRepr {
-    pub target_state: Vec<TargetState>,
-    pub start_signal_id: String,
-    pub end_signal_id: String,
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct SupportedSignalStates {
+    pub main: Vec<MainSignalState>,
+    pub zs3: Option<Vec<AdditionalSignalZs3Symbol>>,
+    pub zs3v: Option<Vec<AdditionalSignalZs3Symbol>>,
 }
 
-impl TryFrom<&serde_json::Value> for DrivewayRepr {
+impl Realize for SupportedSignalStates {
+    fn realize(&self) -> TokenStream {
+        let main = self.main.iter().map(Realize::realize);
+        let zs3 = match &self.zs3 {
+            Some(states) => states.iter().map(Realize::realize).collect(),
+            None => vec![],
+        };
+        let zs3v = match &self.zs3v {
+            Some(states) => states.iter().map(Realize::realize).collect(),
+            None => vec![],
+        };
+
+        quote! {
+            track_element::signal::SupportedSignalStates::default().main(&mut vec![#(#main),*]).zs3(&mut vec![#(#zs3),*]).zs3v(&mut vec![#(#zs3v),*])
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct MainSignalState(pub String);
+
+impl TryInto<track_element::signal::MainSignalState> for &MainSignalState {
     type Error = GenerationError;
 
-    fn try_from(value: &serde_json::Value) -> Result<Self, Self::Error> {
-        let target_states_json = value.as_array().ok_or(GenerationError::InvalidJson(
-            "Target state should be an array".into(),
-        ))?;
-        let target_state: Result<Vec<TargetState>, _> = target_states_json
-            .iter()
-            .map(TargetState::try_from)
-            .collect();
-        let target_state = target_state?;
+    fn try_into(self) -> Result<track_element::signal::MainSignalState, Self::Error> {
+        let lower = self.0.to_ascii_lowercase();
+        match lower.as_str() {
+            "ks1" => Ok(track_element::signal::MainSignalState::Ks1),
+            "ks2" => Ok(track_element::signal::MainSignalState::Ks2),
+            "hp0" => Ok(track_element::signal::MainSignalState::Hp0),
+            "hp1" => Ok(track_element::signal::MainSignalState::Hp1),
+            "hp2" => Ok(track_element::signal::MainSignalState::Hp2),
+            "sh1" => Ok(track_element::signal::MainSignalState::Sh1),
+            e => Err(GenerationError::InvalidJson(format!(
+                "Unknown main signal state `{e}`"
+            ))),
+        }
+    }
+}
 
-        let start_signal_id = target_state
-            .iter()
-            .find(|TargetState(_, t, _)| matches!(t, TrackElement::Signal(_, _, _)))
-            .ok_or(GenerationError::InvalidJson(
-                "Could not find start signal ID".into(),
-            ))?
-            .0
-            .to_string();
+impl Realize for MainSignalState {
+    fn realize(&self) -> TokenStream {
+        let state: track_element::signal::MainSignalState = self.try_into().unwrap();
+        match state {
+            track_element::signal::MainSignalState::Hp0 => {
+                quote! {track_element::signal::MainSignalState::Hp0}
+            }
+            track_element::signal::MainSignalState::Hp0PlusSh1 => {
+                quote! {track_element::signal::MainSignalState::Hp0PlusSh1}
+            }
+            track_element::signal::MainSignalState::Hp0WithDrivingIndicator => {
+                quote! {track_element::signal::MainSignalState::Hp0WithDrivingIndicator}
+            }
+            track_element::signal::MainSignalState::Ks1 => {
+                quote! {track_element::signal::MainSignalState::Ks1}
+            }
+            track_element::signal::MainSignalState::Ks1Flashing => {
+                quote! {track_element::signal::MainSignalState::Ks1Flashing}
+            }
+            track_element::signal::MainSignalState::Ks1FlashingWithAdditionalLight => {
+                quote! {track_element::signal::MainSignalState::Ks1FlashingWithAdditionalLight}
+            }
+            track_element::signal::MainSignalState::Ks2 => {
+                quote! {track_element::signal::MainSignalState::Ks2}
+            }
+            track_element::signal::MainSignalState::Ks2WithAdditionalLight => {
+                quote! {track_element::signal::MainSignalState::Ks2WithAdditionalLight}
+            }
+            track_element::signal::MainSignalState::Sh1 => {
+                quote! {track_element::signal::MainSignalState::Sh1}
+            }
+            track_element::signal::MainSignalState::IdLight => {
+                quote! {track_element::signal::MainSignalState::IdLight}
+            }
+            track_element::signal::MainSignalState::Hp0Hv => {
+                quote! {track_element::signal::MainSignalState::Hp0Hv}
+            }
+            track_element::signal::MainSignalState::Hp1 => {
+                quote! {track_element::signal::MainSignalState::Hp1}
+            }
+            track_element::signal::MainSignalState::Hp2 => {
+                quote! {track_element::signal::MainSignalState::Hp2}
+            }
+            track_element::signal::MainSignalState::Vr0 => {
+                quote! {track_element::signal::MainSignalState::Vr0}
+            }
+            track_element::signal::MainSignalState::Vr1 => {
+                quote! {track_element::signal::MainSignalState::Vr1}
+            }
+            track_element::signal::MainSignalState::Vr2 => {
+                quote! {track_element::signal::MainSignalState::Vr2}
+            }
+            track_element::signal::MainSignalState::Off => {
+                quote! {track_element::signal::MainSignalState::Off}
+            }
+        }
+    }
+}
 
-        let end_signal_id = target_state
-            .iter()
-            .filter(|TargetState(_, t, _)| matches!(t, TrackElement::Signal(_, _, _)))
-            .last()
-            .ok_or(GenerationError::InvalidJson(
-                "Could not find end signal ID".into(),
-            ))?
-            .0
-            .to_string();
+#[derive(Deserialize, Debug, Clone)]
+pub struct AdditionalSignalZs3Symbol(u8);
 
-        Ok(DrivewayRepr {
-            target_state,
-            start_signal_id,
-            end_signal_id,
-        })
+impl TryInto<track_element::signal::AdditionalSignalZs3Symbol> for &AdditionalSignalZs3Symbol {
+    type Error = GenerationError;
+
+    fn try_into(self) -> Result<track_element::signal::AdditionalSignalZs3Symbol, Self::Error> {
+        track_element::signal::AdditionalSignalZs3Symbol::try_from(self.0)
+            .map_err(|e| GenerationError::InvalidJson(e.to_string()))
+    }
+}
+
+impl Realize for AdditionalSignalZs3Symbol {
+    fn realize(&self) -> TokenStream {
+        let symbol: track_element::signal::AdditionalSignalZs3Symbol = self.try_into().unwrap();
+        match symbol {
+            track_element::signal::AdditionalSignalZs3Symbol::OFF => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::OFF}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::ONE => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::ONE}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::TWO => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::TWO}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::THREE => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::THREE}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::FOUR => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::FOUR}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::FIVE => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::FIVE}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::SIX => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::SIX}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::SEVEN => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::SEVEN}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::EIGHT => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::EIGHT}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::NINE => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::NINE}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::TEN => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::TEN}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::ELEVEN => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::ELEVEN}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::TWELVE => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::TWELVE}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::THIRTEEN => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::THIRTEEN}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::FOURTEEN => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::FOURTEEN}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::FIFTEEN => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::FIFTEEN}
+            }
+            track_element::signal::AdditionalSignalZs3Symbol::SIXTEEN => {
+                quote! {track_element::signal::AdditionalSignalZs3Symbol::SIXTEEN}
+            }
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum PointState {
+    Left,
+    Right,
+}
+
+impl Realize for PointState {
+    fn realize(&self) -> TokenStream {
+        match self {
+            PointState::Left => quote! {track_element::point::PointState::Left},
+            PointState::Right => quote! {track_element::point::PointState::Right},
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum VacancySectionState {
+    Free,
+    Occupied,
+}
+
+impl Realize for VacancySectionState {
+    fn realize(&self) -> TokenStream {
+        match self {
+            VacancySectionState::Free => {
+                quote! {track_element::vacancy_section::VacancySectionState::Free}
+            }
+            VacancySectionState::Occupied => {
+                quote! {track_element::vacancy_section::VacancySectionState::Free}
+            }
+        }
     }
 }

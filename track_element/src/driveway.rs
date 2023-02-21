@@ -6,21 +6,28 @@ use std::rc::Rc;
 use crate::{
     point::{Point, PointState},
     signal::{Signal, SignalState},
+    vacancy_section::{VacancySection, VacancySectionState},
 };
 use crate::{TrackElement, TrackElementError};
 
 #[derive(Debug)]
-pub struct TargetState {
+pub struct DrivewayState {
     points: Vec<(Rc<RefCell<Point>>, PointState)>,
     signals: Vec<(Rc<RefCell<Signal>>, SignalState)>,
+    vacancy_sections: Vec<(Rc<RefCell<VacancySection>>, VacancySectionState)>,
 }
 
-impl TargetState {
+impl DrivewayState {
     pub fn new(
         points: Vec<(Rc<RefCell<Point>>, PointState)>,
         signals: Vec<(Rc<RefCell<Signal>>, SignalState)>,
+        vacancy_sections: Vec<(Rc<RefCell<VacancySection>>, VacancySectionState)>,
     ) -> Self {
-        Self { points, signals }
+        Self {
+            points,
+            signals,
+            vacancy_sections,
+        }
     }
 
     pub fn set_state(&mut self) -> Result<(), TrackElementError> {
@@ -40,6 +47,10 @@ impl TargetState {
                 .for_each(|(elem, _)| elem.borrow_mut().reset())
         }
 
+        for (section, state) in &self.vacancy_sections {
+            section.borrow_mut().set_state(*state)?;
+        }
+
         Ok(())
     }
 }
@@ -48,25 +59,29 @@ impl TargetState {
 pub struct Driveway {
     conflicting_driveways: Vec<Rc<RefCell<Driveway>>>,
     is_set: bool,
-    target_state: TargetState,
-    start_signal: Rc<RefCell<Signal>>,
-    end_signal: Rc<RefCell<Signal>>,
+    target_state: DrivewayState,
+    start_signal_id: String,
+    end_signal_id: String,
 }
 
 impl Driveway {
     pub fn new(
         conflicting_driveways: Vec<Rc<RefCell<Driveway>>>,
-        expected_state: TargetState,
-        start_signal: Rc<RefCell<Signal>>,
-        end_signal: Rc<RefCell<Signal>>,
+        expected_state: DrivewayState,
+        start_signal_id: String,
+        end_signal_id: String,
     ) -> Self {
         Self {
             conflicting_driveways,
             is_set: false,
             target_state: expected_state,
-            start_signal,
-            end_signal,
+            start_signal_id,
+            end_signal_id,
         }
+    }
+
+    pub fn id(&self) -> String {
+        format!("{}-{}", self.start_signal_id, self.end_signal_id)
     }
 
     pub fn is_set(&self) -> bool {
@@ -110,10 +125,8 @@ impl DrivewayManager {
     pub fn add(&mut self, driveway: Rc<RefCell<Driveway>>) {
         let _driveway = driveway.clone();
         let driveway_borrow = _driveway.borrow();
-        let start_signal_borrow = driveway_borrow.start_signal.borrow();
-        let end_signal_borrow = driveway_borrow.end_signal.borrow();
 
-        let id = DrivewayManager::driveway_id(start_signal_borrow.id(), end_signal_borrow.id());
+        let id = driveway_borrow.id();
         self.driveways.insert(id, driveway);
     }
 

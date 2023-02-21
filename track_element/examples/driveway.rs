@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use track_element::{
-    driveway::{Driveway, TargetState},
+    driveway::{Driveway, DrivewayState},
     point::{Point, PointState},
     signal::{MainSignalState, Signal, SignalState, SupportedSignalStates},
     TrackElement,
@@ -17,15 +17,16 @@ fn main() {
         "S".to_string(),
     )));
 
-    let ts = TargetState::new(
+    let ts = DrivewayState::new(
         vec![
             (p1.clone(), PointState::Right),
             (p2.clone(), PointState::Left),
         ],
         vec![(s.clone(), (MainSignalState::Ks1).into())],
+        vec![],
     );
 
-    let mut dw = Driveway::new(Vec::new(), ts, s.clone(), s.clone());
+    let mut dw = Driveway::new(Vec::new(), ts, "S".to_string(), "S".to_string());
     dw.set_way().unwrap();
     assert!(matches!(p1.borrow().state(), PointState::Right));
     assert!(matches!(p2.borrow().state(), PointState::Left));

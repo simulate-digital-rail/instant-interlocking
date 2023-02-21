@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{TrackElement, TrackElementError};
 
 #[derive(Debug, Clone, Copy)]
@@ -22,6 +24,10 @@ impl Point {
     pub fn new(state: PointState, id: String) -> Self {
         Self { state, id }
     }
+
+    pub fn new_rc(state: PointState, id: String) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(Self::new(state, id)))
+    }
 }
 
 impl TrackElement for Point {
@@ -35,7 +41,7 @@ impl TrackElement for Point {
         self.state
     }
 
-    fn set_state(&mut self, new_state: Self::State) -> Result<(), TrackElementError>{
+    fn set_state(&mut self, new_state: Self::State) -> Result<(), TrackElementError> {
         self.state = new_state;
         println!("Point state is now {:?}", self.state);
         Ok(())
