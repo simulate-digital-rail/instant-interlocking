@@ -7,8 +7,6 @@ use track_element::{point::PointState, signal::MainSignalState};
 mod driveway;
 mod generate;
 
-const DEVELOPMENT_ENV: &str = "CODE_GENERATION_DEVELOPMENT_MODE";
-
 #[derive(Debug, Parser)]
 #[command(
     name = "IXL Code Generator",
@@ -19,14 +17,11 @@ struct Opt {
     #[arg(value_hint = clap::ValueHint::FilePath, required_unless_present = "example")]
     input: Option<PathBuf>,
     /// Where to write the generated interlocking code
-    #[arg(long, short, value_hint = clap::ValueHint::FilePath)]
-    output: Option<PathBuf>,
+    #[arg(long, short, value_hint = clap::ValueHint::DirPath)]
+    output: PathBuf,
     /// Use the example data provided by this tool (ignores JSON input)
     #[arg(long, short)]
     example: bool,
-    /// Development mode: Put the generated interlocking into the cargo examples folder
-    #[arg(long)]
-    development: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -168,38 +163,41 @@ fn main() -> anyhow::Result<()> {
     let generated = generate::generate(&routes)?;
     let generated_tests = generate::generate_tests(&routes)?;
 
-    let is_development = std::env::var(DEVELOPMENT_ENV).is_ok() || args.development;
+    let mut output_path = std::env::current_dir()?;
+    output_path.push(&args.output);
 
-    let path = if is_development { "examples" } else { "dst" };
-    let file_name = if is_development {
-        "dev_ixl.rs"
-    } else {
-        "ixl.rs"
-    };
-    let file_path = format!("{path}/{file_name}");
+    std::fs::create_dir_all(&output_path)?;
 
-    match std::fs::create_dir_all(path) {
-        Ok(_) => println!("Created directory {path}"),
-        Err(e) => panic!("Could not create directory {path}. Error: {e}"),
-    }
+    std::process::Command::new("cargo")
+        .current_dir(&output_path)
+        .args(["init", "--name", "ixl"])
+        .spawn()?
+        .wait()?;
+
+    let mut manifest_path = output_path.clone();
+    manifest_path.push("Cargo.toml");
+
+    let mut manifest = std::fs::OpenOptions::new()
+        .append(true)
+        .open(&manifest_path)?;
+    manifest.write_all(b"\n[workspace]")?;
+
+    std::process::Command::new("cargo")
+        .current_dir(&output_path)
+        .args(["add", "--path", "../track_element", "track_element"])
+        .spawn()?
+        .wait()?;
+
+    let mut src_dir = output_path.clone();
+    src_dir.push("src/main.rs");
 
     // Interlocking
-    let mut fp = std::fs::File::create(file_path.clone()).unwrap_or_else(|_| {
-        std::fs::OpenOptions::new()
-            .write(true)
-            .open(file_path)
-            .unwrap()
-    });
-    fp.write_all(generated.as_bytes()).unwrap();
+    let mut fp = std::fs::File::create(&src_dir)?;
+    fp.write_all(generated.as_bytes())?;
 
     // Tests
-    let mut fp = std::fs::File::create("src/dev_test.rs").unwrap_or_else(|_| {
-        std::fs::OpenOptions::new()
-            .write(true)
-            .open("src/dev_test.rs")
-            .unwrap()
-    });
-    fp.write_all(generated_tests.as_bytes()).unwrap();
+    let mut fp = std::fs::File::create(&src_dir.with_file_name("test.rs"))?;
+    fp.write_all(generated_tests.as_bytes())?;
 
     Ok(())
 }

@@ -29,16 +29,9 @@ test:track_elements:
     - cd ..
 test:code_generation:
   script:
-    - cd code_generation/
     - echo Generating interlocking code ...
-    - cargo run -- -e
-    - cd ../.. 
-    - mkdir Interlocking
-    - cd Interlocking/
-    - cargo init
-    - mv ../codegen/code_generation/src/dev_test.rs src
-    - sed -i '1s/^/mod dev_test;\n/' src/main.rs
-    - echo 'track_element = { path = "../codegen/track_element" }' >> Cargo.toml
+    - cargo run --package code_generation -- -e -o ixl
+    - cd ixl
     - cargo test
     - cd ..
 test:rasta-sys:
