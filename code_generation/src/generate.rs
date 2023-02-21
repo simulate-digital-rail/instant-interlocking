@@ -287,6 +287,9 @@ pub fn generate(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
     let tokens = quote! {
             extern crate track_element;
 
+            #[cfg(test)]
+            mod test;
+
             use std::collections::BTreeMap;
             use std::cell::RefCell;
             use std::rc::Rc;
