@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{TrackElement, TrackElementError};
 
 // TODO: add real KS-Signal states
@@ -221,6 +223,15 @@ impl Signal {
             id,
         }
     }
+
+    pub fn new_rc(
+        state: SignalState,
+        supported_states: SupportedSignalStates,
+        id: String,
+    ) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(Self::new(state, supported_states, id)))
+    }
+
     pub fn reset(&mut self) {
         self.state = SignalState::default()
     }

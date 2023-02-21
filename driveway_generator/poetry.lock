@@ -300,6 +300,24 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "vacancy-section-generator"
+version = "0.1.0"
+description = ""
+category = "main"
+optional = false
+python-versions = "^3.10"
+develop = false
+
+[package.dependencies]
+yaramo = {git = "https://github.com/simulate-digital-rail/yaramo"}
+
+[package.source]
+type = "git"
+url = "https://github.com/simulate-digital-rail/vacancy-section-generator"
+reference = "HEAD"
+resolved_reference = "ac8f7fb02ebd5a4fdbe6c2fa8240a9af87724729"
+
+[[package]]
 name = "yaramo"
 version = "0.1.0"
 description = "yaramo is a railway model focusing on interoperability between different existing planning formats."
@@ -332,7 +350,7 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "2b9c0f263f072d4f47e76794763d1956d2cc2b6b46d6e68986a89c4e928d16a3"
+content-hash = "7cecfb68b3374230bf01b38a80a7b2828c81b52088b15932f9ab3567c4f35a2b"
 
 [metadata.files]
 atomicwrites = [
@@ -599,6 +617,7 @@ tomli = [
     {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
 ]
+vacancy-section-generator = []
 yaramo = []
 zipp = [
     {file = "zipp-3.8.1-py3-none-any.whl", hash = "sha256:47c40d7fe183a6f21403a199b3e4192cca5774656965b0a4988ad2f8feb5f009"},

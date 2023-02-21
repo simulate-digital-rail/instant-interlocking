@@ -7,6 +7,7 @@ pub mod signal;
 
 #[cfg(test)]
 mod test;
+pub mod vacancy_section;
 
 #[derive(Debug)]
 pub enum TrackElementError {
