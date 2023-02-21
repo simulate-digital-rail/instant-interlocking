@@ -40,7 +40,7 @@ def generate_interlocking(rowid):
             port = s.getsockname()[1]
 
         # generate code
-        check_call(["cargo", "run", "--package", "code_generation", "--", "-o", f"ixl_{rowid}", "driveway_generator/driveway_generator/driveways.json"], cwd=r"../")
+        check_call(["cargo", "run", "--package", "code_generation", "--", "-o", f"ixl_{rowid}", f"ui/generated/{rowid}_routes.json"], cwd=r"../")
         check_call(["cargo", "build"], cwd=f"../ixl_{rowid}")
 
         # start interlocking

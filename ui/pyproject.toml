@@ -7,7 +7,9 @@ authors = ["Your Name <you@example.com>"]
 [tool.poetry.dependencies]
 python = "^3.10"
 Flask = "^2.2.2"
-driveway-generator = {path = "../driveway_generator"}
+requests = "^2.28.2"
+orm-importer = {git = "https://github.com/simulate-digital-rail/orm-importer.git"}
+interlocking-exporter = {git = "https://github.com/simulate-digital-rail/interlocking-exporter"}
 
 [build-system]
 requires = ["poetry-core"]
