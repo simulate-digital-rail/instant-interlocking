@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "codegen_ui"
+version = "0.1.0"
+description = "Web user interface for ixl code generation"
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+Flask = "^2.2.2"
+driveway-generator = {path = "../driveway_generator"}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

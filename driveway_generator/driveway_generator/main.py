@@ -67,14 +67,11 @@ def generate_signal_state(signal: signal.Signal, max_speed: int | None) -> dict:
     }
 
 
-def generate_driveway_json():
-    topology = ORMImporter().run(
-        # "52.39385615174401 13.049869537353517 52.3902158368756 13.049440383911135 52.38821222613622 13.073966503143312 52.392153883603726 13.074588775634767"
-        "52.393489514923075 13.06776523590088 52.39077008760343 13.067657947540283 52.391062433215595 13.029785156250002 52.394139638403715 13.029677867889406"
-    )  # Potsdam Hbf Westseite
+def generate_driveway_json(polygon="52.393489514923075 13.06776523590088 52.39077008760343 13.067657947540283 52.391062433215595 13.029785156250002 52.394139638403715 13.029677867889406"):
+    topology = ORMImporter().run(polygon)
     RouteGenerator(topology).generate_routes()
     output = []
-    for route in topology.routes:
+    for route_uuid, route in topology.routes.items():
         previous_node = route.start_signal.previous_node()
         route_json = []
         signal_state = generate_signal_state(route.start_signal, route.maximum_speed)
