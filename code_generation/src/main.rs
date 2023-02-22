@@ -1,9 +1,10 @@
 use std::{io::Write, path::PathBuf};
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use driveway::{
     DrivewayRepr, MainSignalState, PointState, SignalState, SupportedSignalStates, TrackElement,
 };
+use fs_extra::dir::CopyOptions;
 
 mod driveway;
 
@@ -15,6 +16,9 @@ mod generate;
     about = "A tool to generate exceutable interlockings from JSON"
 )]
 struct Opt {
+    /// Which control station to use - defaults to CLI
+    #[command(subcommand)]
+    control_station: ControlStation,
     /// The JSON source for the generator
     #[arg(value_hint = clap::ValueHint::FilePath, required_unless_present = "example")]
     input: Option<PathBuf>,
@@ -24,6 +28,27 @@ struct Opt {
     /// Use the example data provided by this tool (ignores JSON input)
     #[arg(long, short)]
     example: bool,
+}
+
+#[derive(Default, Debug, Clone, Subcommand)]
+pub enum ControlStation {
+    #[default]
+    /// Build the interlocking with a gRPC control station and Web UI
+    #[command()]
+    Cli,
+    /// Build the interlocking with a gRPC control station and Web UI
+    #[command()]
+    Grpc {
+        /// Address to run the webserver on
+        #[arg(short, long)]
+        addr: String,
+        /// The location of the JSON file containing the topology information
+        #[arg(short, long, value_hint = clap::ValueHint::FilePath)]
+        topology: String,
+        /// The location of the JSON file containing the placement information
+        #[arg(short, long, value_hint = clap::ValueHint::FilePath)]
+        placement: String,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -190,7 +215,7 @@ fn main() -> anyhow::Result<()> {
         serde_json::from_str(&std::fs::read_to_string(args.input.clone().unwrap())?)?
     };
 
-    let generated = generate::generate(&routes)?;
+    let generated = generate::generate(&routes, args.control_station.clone())?;
     let generated_tests = generate::generate_tests(&routes)?;
 
     let mut output_path = std::env::current_dir()?;
@@ -218,6 +243,40 @@ fn main() -> anyhow::Result<()> {
         .spawn()?
         .wait()?;
 
+    if let ControlStation::Grpc { .. } = args.control_station {
+        std::process::Command::new("cargo")
+            .current_dir(&output_path)
+            .args([
+                "add",
+                "--path",
+                "../grpc_control_station",
+                "grpc_control_station",
+            ])
+            .spawn()?
+            .wait()?;
+
+        std::process::Command::new("cargo")
+            .current_dir(&output_path)
+            .args(["add", "tokio", "--features", "full"])
+            .spawn()?
+            .wait()?;
+
+        let interlocking_ui_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../grpc_control_station/ixl-frontend/build"
+        );
+
+        let mut frontend_path = output_path.clone();
+        frontend_path.push("ixl-frontend");
+        let _ = std::fs::create_dir(&frontend_path);
+
+        fs_extra::dir::copy(
+            interlocking_ui_path,
+            &frontend_path,
+            &CopyOptions::default(),
+        )?;
+    }
+
     let mut src_dir = output_path.clone();
     src_dir.push("src/main.rs");
 
@@ -226,7 +285,7 @@ fn main() -> anyhow::Result<()> {
     fp.write_all(generated.as_bytes())?;
 
     // Tests
-    let mut fp = std::fs::File::create(&src_dir.with_file_name("test.rs"))?;
+    let mut fp = std::fs::File::create(src_dir.with_file_name("test.rs"))?;
     fp.write_all(generated_tests.as_bytes())?;
 
     Ok(())

@@ -51,7 +51,7 @@ impl Realize for TrackElement {
     fn realize(&self) -> TokenStream {
         match self {
             TrackElement::Point { uuid, .. } => {
-                quote! {track_element::point::Point::new_rc(track_element::point::PointState::default(), #uuid.to_string())}
+                quote! {track_element::point::Point::new_arc(track_element::point::PointState::default(), #uuid.to_string())}
             }
             TrackElement::Signal {
                 uuid,
@@ -60,8 +60,12 @@ impl Realize for TrackElement {
                 ..
             } => {
                 let supported_states = supported_states.realize();
+                let name = match name {
+                    Some(name) => quote! { Some(#name.to_string()) },
+                    None => quote! { None },
+                };
                 quote! {
-                    track_element::signal::Signal::new_rc(track_element::signal::SignalState::default(), #supported_states, #uuid.to_string())
+                    track_element::signal::Signal::new_arc(track_element::signal::SignalState::default(), #supported_states, #uuid.to_string(), #name)
                 }
             }
             TrackElement::VacancySection {
@@ -73,16 +77,16 @@ impl Realize for TrackElement {
                     .iter()
                     .map(|signal| {
                         quote! {
-                            Some(match track_elements.get(#signal).unwrap() {
+                            match track_elements.get(#signal).unwrap() {
                                 TrackElement::Signal(signal) => signal.clone(),
                                 _ => unreachable!()
-                            })
+                            }
                         }
                     })
                     .collect();
 
                 quote! {
-                    track_element::vacancy_section::VacancySection::new_rc(#uuid.to_string(), track_element::vacancy_section::VacancySectionState::default(), vec![#(#prev_signals),*])
+                    track_element::vacancy_section::VacancySection::new_arc(#uuid.to_string(), track_element::vacancy_section::VacancySectionState::default(), vec![#(#prev_signals),*])
                 }
             }
         }

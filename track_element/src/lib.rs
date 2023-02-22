@@ -11,7 +11,7 @@ pub mod vacancy_section;
 
 #[derive(Debug)]
 pub enum TrackElementError {
-    DrivewayDoesNotExist,
+    DrivewayDoesNotExist(String),
     HasConflictingDriveways,
     InvalidAdditionalSignalState,
     InvalidMainSignalState(MainSignalState),

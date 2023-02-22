@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::sync::{Arc, RwLock};
 
 use crate::{
     signal::{MainSignalState, Signal},
@@ -16,14 +16,14 @@ pub enum VacancySectionState {
 pub struct VacancySection {
     id: String,
     state: VacancySectionState,
-    previous_signals: Vec<Rc<RefCell<Signal>>>,
+    previous_signals: Vec<Arc<RwLock<Signal>>>,
 }
 
 impl VacancySection {
     pub fn new(
         id: String,
         state: VacancySectionState,
-        previous_signals: Vec<Rc<RefCell<Signal>>>,
+        previous_signals: Vec<Arc<RwLock<Signal>>>,
     ) -> Self {
         Self {
             id,
@@ -32,12 +32,12 @@ impl VacancySection {
         }
     }
 
-    pub fn new_rc(
+    pub fn new_arc(
         id: String,
         state: VacancySectionState,
-        previous_signals: Vec<Rc<RefCell<Signal>>>,
-    ) -> Rc<RefCell<Self>> {
-        Rc::new(RefCell::new(Self::new(id, state, previous_signals)))
+        previous_signals: Vec<Arc<RwLock<Signal>>>,
+    ) -> Arc<RwLock<Self>> {
+        Arc::new(RwLock::new(Self::new(id, state, previous_signals)))
     }
 }
 
@@ -56,7 +56,7 @@ impl TrackElement for VacancySection {
         // TODO: Better logic, probably more like "wait until state equals expected state"
         self.state = new_state;
         for signal in &self.previous_signals {
-            let mut signal = signal.borrow_mut();
+            let mut signal = signal.write().unwrap();
             match new_state {
                 VacancySectionState::Occupied => signal.set_state(MainSignalState::Hp0.into())?,
                 _ => (),

@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+option go_package = "github.com/rs22/ixl-sim/proto";
+option csharp_namespace = "Interlocking.Proto";
+
+package ixl;
+
+service Interlocking {
+  rpc MovePoint(MpCommand) returns (Nothing) {}
+  rpc MoveTrailedPoint(MtpCommand) returns (Nothing) {}
+  rpc ResetAxleCounter(RacCommand) returns (Nothing) {}
+  rpc RequestRoute(RrCommand) returns (Nothing) {}
+  rpc ReleaseRoute(RlrCommand) returns (Nothing) {}
+
+  rpc GetPointState(ElementStateRequest) returns (ElementStateResponse) {}
+}
+
+message MpCommand {
+  string point = 1;
+  MpDirection direction = 2;
+}
+
+enum MpDirection {
+  MpLeft = 0;
+  MpRight = 1;
+}
+
+message MtpCommand {
+  string point = 1;
+  MtpDirection direction = 2;
+}
+
+enum MtpDirection {
+  left = 0;
+  right = 1;
+}
+
+message RacCommand { string tps = 1; }
+
+message RrCommand {
+  string start = 1;
+  string ziel = 2;
+}
+
+message RlrCommand { string start = 1; }
+
+message ElementStateRequest { string element = 1; }
+
+message ElementStateResponse { string state = 1; }
+
+message Nothing {}
