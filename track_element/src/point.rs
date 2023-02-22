@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::sync::{Arc, RwLock};
 
 use crate::{TrackElement, TrackElementError};
 
@@ -25,8 +25,8 @@ impl Point {
         Self { state, id }
     }
 
-    pub fn new_rc(state: PointState, id: String) -> Rc<RefCell<Self>> {
-        Rc::new(RefCell::new(Self::new(state, id)))
+    pub fn new_arc(state: PointState, id: String) -> Arc<RwLock<Self>> {
+        Arc::new(RwLock::new(Self::new(state, id)))
     }
 }
 

@@ -3,7 +3,10 @@ use quote::quote;
 use std::{cmp::Ordering, collections::BTreeMap};
 use thiserror::Error;
 
-use crate::driveway::{DrivewayRepr, Realize, TrackElement};
+use crate::{
+    driveway::{DrivewayRepr, Realize, TrackElement},
+    ControlStation,
+};
 
 #[derive(Clone, Debug, Error)]
 pub enum GenerationError {
@@ -97,7 +100,7 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
         let signal_states = vec![#(#signal_states),*];
         let vacancy_section_states = vec![#(#vacancy_section_states),*];
         let target_state = track_element::driveway::DrivewayState::new(point_states, signal_states, vacancy_section_states);
-        driveway_manager.add(Rc::new(RefCell::new(track_element::driveway::Driveway::new(vec![], target_state, #start_signal_id.to_string(), #end_signal_id.to_string()))));
+        driveway_manager.add(Arc::new(RwLock::new(track_element::driveway::Driveway::new(vec![], target_state, #start_signal_id.to_string(), #end_signal_id.to_string()))));
     }
 }
 
@@ -164,16 +167,15 @@ pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationEr
         extern crate track_element;
 
         use std::collections::BTreeMap;
-        use std::cell::RefCell;
-        use std::rc::Rc;
+        use std::sync::{Arc, RwLock};
         use std::panic;
         use track_element::driveway::DrivewayManager;
 
         #[derive(Debug)]
         enum TrackElement {
-            Point(Rc<RefCell<track_element::point::Point>>),
-            Signal(Rc<RefCell<track_element::signal::Signal>>),
-            VacancySection(Rc<RefCell<track_element::vacancy_section::VacancySection>>)
+            Point(Arc<RwLock<track_element::point::Point>>),
+            Signal(Arc<RwLock<track_element::signal::Signal>>),
+            VacancySection(Arc<RwLock<track_element::vacancy_section::VacancySection>>)
         }
 
         #[test]
@@ -193,7 +195,33 @@ pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationEr
     Ok(tokens.to_string())
 }
 
-pub fn generate(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
+fn generate_control_station(control_station: &ControlStation) -> TokenStream {
+    match control_station {
+        ControlStation::Cli => quote! {
+            let control_station = track_element::control_station::ControlStation::new(driveway_manager);
+            control_station.start();
+        },
+        ControlStation::Grpc {
+            addr,
+            topology,
+            placement,
+        } => {
+            let topology = std::fs::read_to_string(topology)
+                .expect("Topology should point to a valid JSON file");
+            let placement = std::fs::read_to_string(placement)
+                .expect("Placement should point to a valid JSON file");
+
+            quote! {
+                let mut control_station = grpc_control_station::ControlStation::new(driveway_manager, #topology, #placement);
+
+                let addr = #addr.parse().unwrap();
+                control_station.listen(addr).await.unwrap();
+            }
+        }
+    }
+}
+
+pub fn generate(routes: &Vec<DrivewayRepr>, cs: ControlStation) -> Result<String, GenerationError> {
     let mut track_elements: Vec<TrackElement> =
         collect_track_elements(routes)?.into_values().collect();
 
@@ -214,6 +242,13 @@ pub fn generate(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
 
     let setup_tokens = generate_setup_tokens(track_element_tokens, driveway_tokens);
 
+    let control_station = generate_control_station(&cs);
+
+    let (main_qualifier, main_attr) = match cs {
+        ControlStation::Cli => (quote! {}, quote! {}),
+        ControlStation::Grpc { .. } => (quote! {async}, quote! {#[tokio::main]}),
+    };
+
     let tokens = quote! {
             extern crate track_element;
 
@@ -221,24 +256,23 @@ pub fn generate(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
             mod test;
 
             use std::collections::BTreeMap;
-            use std::cell::RefCell;
-            use std::rc::Rc;
+            use std::sync::{Arc, RwLock};
 
         #[derive(Debug)]
         enum TrackElement {
-            Point(Rc<RefCell<track_element::point::Point>>),
-            Signal(Rc<RefCell<track_element::signal::Signal>>),
-            VacancySection(Rc<RefCell<track_element::vacancy_section::VacancySection>>)
+            Point(Arc<RwLock<track_element::point::Point>>),
+            Signal(Arc<RwLock<track_element::signal::Signal>>),
+            VacancySection(Arc<RwLock<track_element::vacancy_section::VacancySection>>)
         }
 
-        fn main(){
+        #main_attr
+        #main_qualifier fn main() {
             #setup_tokens
 
             println!("TrackElements: {track_elements:?}");
             println!("Driveways: {:?}", driveway_manager.get_driveway_ids().collect::<Vec<_>>());
 
-            let control_station = track_element::control_station::ControlStation::new(driveway_manager);
-            control_station.start();
+            #control_station
         }
     };
 

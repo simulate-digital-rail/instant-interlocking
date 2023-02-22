@@ -8,7 +8,11 @@ from flask import Flask, request, render_template, url_for, g, redirect
 from interlocking_exporter.exporter import Exporter as InterlockingExporter
 from orm_importer.importer import ORMImporter
 
-from ui.utils import query_db, generate_interlocking
+from utils import query_db, generate_interlocking
+
+import logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.WARNING)
 
 app = Flask(__name__)
 
@@ -17,10 +21,10 @@ app = Flask(__name__)
 def homepage():
     running_ixls = query_db("SELECT rowid, * FROM interlockings WHERE state=1")
     return render_template(
-        'index.html',
-        css_file=url_for('static', filename='pico.min.css'),
-        axios_file=url_for('static', filename='axios.min.js'),
-        modal_file=url_for('static', filename='modal.js'),
+        "index.html",
+        css_file=url_for("static", filename="pico.min.css"),
+        axios_file=url_for("static", filename="axios.min.js"),
+        modal_file=url_for("static", filename="modal.js"),
         running_ixls=running_ixls,
         hostname=urlparse(request.base_url).hostname,
         base_url=request.base_url,
@@ -30,9 +34,9 @@ def homepage():
 @app.route("/run")
 def run_converter():
     # generate topology from polygon
-    polygon = request.args.get('polygon')
+    polygon = request.args.get("polygon")
     if not polygon:
-        return 'No location specified', 400
+        return "No location specified", 400
     topology = ORMImporter().run(polygon)
 
     # persist to database
@@ -63,7 +67,10 @@ def get_status(rowid=0):
         case 0:
             return json.dumps({"id": rowid, "state": "generating"}), 200
         case 1:
-            return json.dumps({"id": rowid, "state": "running", "port": result["port"]}), 200
+            return (
+                json.dumps({"id": rowid, "state": "running", "port": result["port"]}),
+                200,
+            )
         case 2:
             return json.dumps({"id": rowid, "state": "stopped"}), 200
         case 3:
@@ -74,7 +81,9 @@ def get_status(rowid=0):
 def terminate(rowid=0):
     result = query_db(f"SELECT * FROM interlockings WHERE ROWID={rowid}", one=True)
     try:
-        response = requests.get(f"http://{urlparse(request.base_url).hostname}:{result['port']}/terminate")
+        response = requests.get(
+            f"http://{urlparse(request.base_url).hostname}:{result['port']}/terminate"
+        )
         if response.status_code != 200:
             return response.text, response.status_code
         query_db(f"UPDATE interlockings SET state=2 WHERE ROWID={rowid}")
@@ -85,7 +94,7 @@ def terminate(rowid=0):
 
 @app.teardown_appcontext
 def close_connection(exception):
-    db = getattr(g, '_database', None)
+    db = getattr(g, "_database", None)
     if db is not None:
         db.close()
 

@@ -30,15 +30,10 @@ test:track_elements:
 test:code_generation:
   script:
     - echo Generating interlocking code ...
-    - cargo run --package code_generation -- -e -o ixl
+    - cargo run --package code_generation -- -e -o ixl cli
     - cd ixl
     - cargo test
     - cd ..
-test:rasta-sys:
-  script:
-    - cd rasta-sys/
-    - git submodule update --init
-    - cargo test --verbose
 
 # Optional: Use a third party library to generate gitlab junit reports
 # test:junit-report:

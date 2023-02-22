@@ -1,8 +1,7 @@
-use std::{cell::RefCell, rc::Rc};
+use std::sync::{Arc, RwLock};
 
 use crate::{TrackElement, TrackElementError};
 
-// TODO: add real KS-Signal states
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MainSignalState {
     #[default]
@@ -213,27 +212,39 @@ pub struct Signal {
     state: SignalState,
     supported_states: SupportedSignalStates,
     id: String,
+    name: Option<String>,
 }
 
 impl Signal {
-    pub fn new(state: SignalState, supported_states: SupportedSignalStates, id: String) -> Self {
+    pub fn new(
+        state: SignalState,
+        supported_states: SupportedSignalStates,
+        id: String,
+        name: Option<String>,
+    ) -> Self {
         Self {
             state,
             supported_states,
             id,
+            name,
         }
     }
 
-    pub fn new_rc(
+    pub fn new_arc(
         state: SignalState,
         supported_states: SupportedSignalStates,
         id: String,
-    ) -> Rc<RefCell<Self>> {
-        Rc::new(RefCell::new(Self::new(state, supported_states, id)))
+        name: Option<String>,
+    ) -> Arc<RwLock<Self>> {
+        Arc::new(RwLock::new(Self::new(state, supported_states, id, name)))
     }
 
     pub fn reset(&mut self) {
         self.state = SignalState::default()
+    }
+
+    pub fn name(&self) -> &str {
+        self.name.as_deref().unwrap_or(self.id())
     }
 }
 
