@@ -263,7 +263,7 @@ yaramo = {git = "https://github.com/simulate-digital-rail/yaramo"}
 type = "git"
 url = "https://github.com/simulate-digital-rail/interlocking-exporter"
 reference = "HEAD"
-resolved_reference = "88846ceb70ca5455e2a4b0418a0421419bb9ab15"
+resolved_reference = "1dfd2645a9920a3128a6bf7b94b75cac9c507c3b"
 
 [[package]]
 name = "itsdangerous"
