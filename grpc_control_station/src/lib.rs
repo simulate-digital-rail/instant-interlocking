@@ -198,22 +198,22 @@ fn point_state_to_string(state: &PointState) -> &'static str {
 
 fn signal_state_to_string(state: &SignalState) -> &'static str {
     match state.main() {
-        MainSignalState::Hp0 => "Hp0",
-        MainSignalState::Hp0PlusSh1 => "Hp0",
-        MainSignalState::Hp0WithDrivingIndicator => "Hp0",
-        MainSignalState::Ks1 => "Ks1",
-        MainSignalState::Ks1Flashing => "Ks1",
-        MainSignalState::Ks1FlashingWithAdditionalLight => "Ks1",
-        MainSignalState::Ks2 => "Ks2",
-        MainSignalState::Ks2WithAdditionalLight => "Ks2",
-        MainSignalState::Sh1 => "Sh1",
+        MainSignalState::Hp0 => "StopDanger",
+        MainSignalState::Hp0PlusSh1 => "StopDanger",
+        MainSignalState::Hp0WithDrivingIndicator => "StopDanger",
+        MainSignalState::Ks1 => "ProceedClear",
+        MainSignalState::Ks1Flashing => "ProceedClear",
+        MainSignalState::Ks1FlashingWithAdditionalLight => "ProceedClear",
+        MainSignalState::Ks2 => "ApproachCaution",
+        MainSignalState::Ks2WithAdditionalLight => "ApproachCaution",
+        MainSignalState::Sh1 => "ApproachCaution",
         MainSignalState::IdLight => "CommunicationError",
-        MainSignalState::Hp0Hv => "Hp0",
-        MainSignalState::Hp1 => "Hp1",
-        MainSignalState::Hp2 => "Hp2",
-        MainSignalState::Vr0 => "Vr0",
-        MainSignalState::Vr1 => "Vr1",
-        MainSignalState::Vr2 => "Vr2",
+        MainSignalState::Hp0Hv => "StopDanger",
+        MainSignalState::Hp1 => "ApproachCaution",
+        MainSignalState::Hp2 => "ApproachCaution",
+        MainSignalState::Vr0 => "ApproachCaution",
+        MainSignalState::Vr1 => "ApproachCaution",
+        MainSignalState::Vr2 => "ApproachCaution",
         MainSignalState::Off => "CommunicationError",
     }
 }
@@ -239,7 +239,7 @@ fn driveway_state_to_json(state: DrivewayState) -> Value {
     }
 
     for (signal, state) in signals {
-        output.get_mut("states").unwrap()[signal.read().unwrap().name()] =
+        output.get_mut("states").unwrap()[signal.read().unwrap().id()] =
             signal_state_to_string(state).into();
     }
 

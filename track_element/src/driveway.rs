@@ -92,28 +92,32 @@ pub struct Driveway {
     conflicting_driveways: Vec<Arc<RwLock<Driveway>>>,
     is_set: bool,
     target_state: DrivewayState,
-    start_signal_id: String,
-    end_signal_id: String,
+    start_signal: Arc<RwLock<Signal>>,
+    end_signal: Arc<RwLock<Signal>>,
 }
 
 impl Driveway {
     pub fn new(
         conflicting_driveways: Vec<Arc<RwLock<Driveway>>>,
         expected_state: DrivewayState,
-        start_signal_id: String,
-        end_signal_id: String,
+        start_signal: Arc<RwLock<Signal>>,
+        end_signal: Arc<RwLock<Signal>>,
     ) -> Self {
         Self {
             conflicting_driveways,
             is_set: false,
             target_state: expected_state,
-            start_signal_id,
-            end_signal_id,
+            start_signal,
+            end_signal,
         }
     }
 
     pub fn id(&self) -> String {
-        format!("{}-{}", self.start_signal_id, self.end_signal_id)
+        format!(
+            "{}-{}",
+            self.start_signal.read().unwrap().id(),
+            self.end_signal.read().unwrap().id()
+        )
     }
 
     pub fn is_set(&self) -> bool {
@@ -131,12 +135,26 @@ impl Driveway {
     }
 
     pub fn state(&self) -> DrivewayState {
-        let signals: Vec<_> = self
+        let mut signals: Vec<_> = self
             .target_state
             .signals
             .iter()
             .map(|(s, _)| (s.clone(), s.read().unwrap().state()))
             .collect();
+        signals.push((
+            self.end_signal.clone(),
+            self.end_signal.read().unwrap().state(),
+        ));
+        for (vacancy_section, _) in &self.target_state.vacancy_sections {
+            for sig in vacancy_section.read().unwrap().previous_signals() {
+                if !signals
+                    .iter()
+                    .any(|(s, _)| s.read().unwrap().id() == sig.read().unwrap().id())
+                {
+                    signals.push((sig.clone(), sig.read().unwrap().state()));
+                }
+            }
+        }
 
         let vacancy_sections: Vec<_> = self
             .target_state
@@ -175,8 +193,16 @@ impl DrivewayManager {
         self.driveways.get(uuid).cloned()
     }
 
-    pub fn get_driveway_ids(&self) -> impl Iterator<Item = &String> {
-        self.driveways.keys()
+    pub fn get_driveway_ids(&self) -> Vec<String> {
+        self.driveways
+            .values()
+            .map(|dw| {
+                let dw = dw.read().unwrap();
+                let start_signal = dw.start_signal.read().unwrap();
+                let end_signal = dw.end_signal.read().unwrap();
+                DrivewayManager::driveway_id(start_signal.name(), end_signal.name())
+            })
+            .collect()
     }
 
     pub fn get_point_state(&self, element: &str) -> Result<PointState, TrackElementError> {
@@ -245,28 +271,43 @@ impl DrivewayManager {
     }
 
     pub fn update_conflicting_driveways(&mut self) {
-        for (id1, driveway) in self.driveways.iter() {
+        for (id1, dw) in self.driveways.iter() {
             for (id2, other) in self.driveways.iter() {
                 if id1 == id2 {
                     continue;
                 }
-                let mut driveway = driveway.write().unwrap();
+                let mut driveway = dw.write().unwrap();
+                let other_arc = other.clone();
+                let other = other.read().unwrap();
+
+                let self_start = driveway.start_signal.clone();
+                let self_start = self_start.read().unwrap();
+                let self_end = driveway.end_signal.clone();
+                let self_end = self_end.read().unwrap();
+                let other_start = other.start_signal.clone();
+                let other_start = other_start.read().unwrap();
+                let other_end = other.end_signal.clone();
+                let other_end = other_end.read().unwrap();
+                let are_continuous =
+                    self_start.id() == other_end.id() || other_start.id() == self_end.id();
+
                 let driveway_points = &driveway.target_state.points;
-                let other_points = &other.read().unwrap().target_state.points;
+                let other_points = &other.target_state.points;
                 let driveway_signals = &driveway.target_state.signals;
-                let other_signals = &other.read().unwrap().target_state.signals;
+                let other_signals = &other.target_state.signals;
                 let has_conflicting_points = driveway_points.iter().any(|(e, _)| {
                     other_points
                         .iter()
                         .any(|(o, _)| e.read().unwrap().id() == o.read().unwrap().id())
                 });
                 let has_conflicting_signals = driveway_signals.iter().any(|(e, _)| {
-                    other_signals
-                        .iter()
-                        .any(|(o, _)| e.read().unwrap().id() == o.read().unwrap().id())
+                    other_signals.iter().any(|(o, _)| {
+                        e.read().unwrap().id() == o.read().unwrap().id() && !are_continuous
+                    })
                 });
+
                 if has_conflicting_points || has_conflicting_signals {
-                    driveway.conflicting_driveways.push(other.clone());
+                    driveway.conflicting_driveways.push(other_arc);
                 }
             }
         }

@@ -244,7 +244,7 @@ impl Signal {
     }
 
     pub fn name(&self) -> &str {
-        self.name.as_deref().unwrap_or(self.id())
+        self.name.as_deref().unwrap_or(self.id()).trim()
     }
 }
 

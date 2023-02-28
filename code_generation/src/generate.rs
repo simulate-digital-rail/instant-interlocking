@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote, ToTokens};
 use std::{cmp::Ordering, collections::BTreeMap};
 use thiserror::Error;
 
@@ -16,24 +16,15 @@ pub enum GenerationError {
     InvalidJson(String),
 }
 
+pub fn uuid_to_var_name(uuid: &str) -> TokenStream {
+    format_ident!("_{}", uuid.replace('-', "_")).to_token_stream()
+}
+
 /// Create new TrackElements and add them to a BTreeMap
 fn realize_element(element: &TrackElement) -> TokenStream {
+    let var_name = uuid_to_var_name(element.id());
     let realized = element.realize();
-    match element {
-        TrackElement::Point { uuid, .. } => quote! {
-            track_elements.insert(#uuid, TrackElement::Point(#realized));
-        },
-        TrackElement::Signal { uuid, .. } => {
-            quote! {
-                track_elements.insert(#uuid, TrackElement::Signal(#realized));
-            }
-        }
-        TrackElement::VacancySection { uuid, .. } => {
-            quote! {
-                track_elements.insert(#uuid, TrackElement::VacancySection(#realized));
-            }
-        }
-    }
+    quote! {let #var_name = #realized;}
 }
 
 fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
@@ -42,14 +33,9 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
         .iter()
         .filter_map(|e| {
             if let TrackElement::Point { uuid, state, .. } = e {
-                let point = quote! {
-                    match track_elements.get(#uuid).unwrap() {
-                        TrackElement::Point(point) => point.clone(),
-                        _ => unreachable!()
-                    }
-                };
+                let point = uuid_to_var_name(uuid);
                 let state = state.realize();
-                Some(quote! {(#point, #state)})
+                Some(quote! {(#point.clone(), #state)})
             } else {
                 None
             }
@@ -61,14 +47,9 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
         .iter()
         .filter_map(|e| {
             if let TrackElement::Signal { uuid, state, .. } = e {
-                let signal = quote! {
-                    match track_elements.get(#uuid).unwrap() {
-                        TrackElement::Signal(signal) => signal.clone(),
-                        _ => unreachable!()
-                    }
-                };
+                let signal = uuid_to_var_name(uuid);
                 let state = state.realize();
-                Some(quote! {(#signal, #state)})
+                Some(quote! {(#signal.clone(), #state)})
             } else {
                 None
             }
@@ -80,27 +61,24 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
         .iter()
         .filter_map(|e| {
             if let TrackElement::VacancySection { uuid, state, .. } = e {
-                let vacancy_section = quote! { match track_elements.get(#uuid).unwrap() {
-                    TrackElement::VacancySection(vacancy_section) => vacancy_section.clone(),
-                    _ => unreachable!()
-                } };
+                let vacancy_section = uuid_to_var_name(uuid);
                 let state = state.realize();
-                Some(quote! {(#vacancy_section, #state)})
+                Some(quote! {(#vacancy_section.clone(), #state)})
             } else {
                 None
             }
         })
         .collect();
 
-    let start_signal_id = &element_target_states.start_signal;
-    let end_signal_id = &element_target_states.end_signal;
+    let start_signal = uuid_to_var_name(element_target_states.start_signal.id());
+    let end_signal = uuid_to_var_name(element_target_states.end_signal.id());
 
     quote! {
         let point_states = vec![#(#point_states),*];
         let signal_states = vec![#(#signal_states),*];
         let vacancy_section_states = vec![#(#vacancy_section_states),*];
         let target_state = track_element::driveway::DrivewayState::new(point_states, signal_states, vacancy_section_states);
-        driveway_manager.add(Arc::new(RwLock::new(track_element::driveway::Driveway::new(vec![], target_state, #start_signal_id.to_string(), #end_signal_id.to_string()))));
+        driveway_manager.add(Arc::new(RwLock::new(track_element::driveway::Driveway::new(vec![], target_state, #start_signal.clone(), #end_signal.clone()))));
     }
 }
 
@@ -122,6 +100,26 @@ fn collect_track_elements(
                     _ => return Err(GenerationError::DuplicateTrackElement),
                 }
             }
+
+            if let TrackElement::VacancySection {
+                previous_signals, ..
+            } = el
+            {
+                for signal in previous_signals {
+                    if !track_elements.contains_key(signal.id()) {
+                        track_elements.insert(signal.id().to_string(), signal.clone());
+                    }
+                }
+            }
+        }
+        if !track_elements.contains_key(route.start_signal.id()) {
+            track_elements.insert(
+                route.start_signal.id().to_string(),
+                route.start_signal.clone(),
+            );
+        }
+        if !track_elements.contains_key(route.end_signal.id()) {
+            track_elements.insert(route.end_signal.id().to_string(), route.end_signal.clone());
         }
     }
     Ok(track_elements)
@@ -132,7 +130,6 @@ fn generate_setup_tokens(
     driveway_tokens: Vec<TokenStream>,
 ) -> TokenStream {
     quote! {
-        let mut track_elements = BTreeMap::new();
         #(#track_element_tokens)*
 
         let mut driveway_manager = track_element::driveway::DrivewayManager::new(BTreeMap::new());
@@ -151,10 +148,7 @@ pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationEr
         _ => Ordering::Equal,
     });
 
-    let track_element_tokens: Vec<_> = track_elements
-        .iter()
-        .map(|element| realize_element(element))
-        .collect();
+    let track_element_tokens: Vec<_> = track_elements.iter().map(realize_element).collect();
 
     let driveway_tokens: _ = routes
         .iter()
@@ -170,13 +164,6 @@ pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationEr
         use std::sync::{Arc, RwLock};
         use std::panic;
         use track_element::driveway::DrivewayManager;
-
-        #[derive(Debug)]
-        enum TrackElement {
-            Point(Arc<RwLock<track_element::point::Point>>),
-            Signal(Arc<RwLock<track_element::signal::Signal>>),
-            VacancySection(Arc<RwLock<track_element::vacancy_section::VacancySection>>)
-        }
 
         #[test]
         fn test_known_driveway() {
@@ -230,10 +217,7 @@ pub fn generate(routes: &Vec<DrivewayRepr>, cs: ControlStation) -> Result<String
         _ => Ordering::Equal,
     });
 
-    let track_element_tokens: Vec<_> = track_elements
-        .iter()
-        .map(|element| realize_element(element))
-        .collect();
+    let track_element_tokens: Vec<_> = track_elements.iter().map(realize_element).collect();
 
     let driveway_tokens: _ = routes
         .iter()
@@ -258,19 +242,13 @@ pub fn generate(routes: &Vec<DrivewayRepr>, cs: ControlStation) -> Result<String
             use std::collections::BTreeMap;
             use std::sync::{Arc, RwLock};
 
-        #[derive(Debug)]
-        enum TrackElement {
-            Point(Arc<RwLock<track_element::point::Point>>),
-            Signal(Arc<RwLock<track_element::signal::Signal>>),
-            VacancySection(Arc<RwLock<track_element::vacancy_section::VacancySection>>)
-        }
+
 
         #main_attr
         #main_qualifier fn main() {
             #setup_tokens
 
-            println!("TrackElements: {track_elements:?}");
-            println!("Driveways: {:?}", driveway_manager.get_driveway_ids().collect::<Vec<_>>());
+            println!("Driveways: {:?}", driveway_manager.get_driveway_ids());
 
             #control_station
         }

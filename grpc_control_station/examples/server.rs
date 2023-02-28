@@ -8,7 +8,6 @@ use track_element::{
     driveway::{Driveway, DrivewayManager, DrivewayState},
     point::{Point, PointState},
     signal::{MainSignalState, Signal, SignalState, SupportedSignalStates},
-    TrackElement,
 };
 
 #[tokio::main]
@@ -42,12 +41,7 @@ async fn main() {
         vec![],
     );
 
-    let dw = Arc::new(RwLock::new(Driveway::new(
-        Vec::new(),
-        ts,
-        s.read().unwrap().id().into(),
-        s2.read().unwrap().id().into(),
-    )));
+    let dw = Arc::new(RwLock::new(Driveway::new(Vec::new(), ts, s, s2)));
     let mut dwm = DrivewayManager::new(BTreeMap::new());
     dwm.add(dw);
 

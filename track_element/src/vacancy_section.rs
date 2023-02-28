@@ -39,6 +39,10 @@ impl VacancySection {
     ) -> Arc<RwLock<Self>> {
         Arc::new(RwLock::new(Self::new(id, state, previous_signals)))
     }
+
+    pub fn previous_signals(&self) -> &[Arc<RwLock<Signal>>] {
+        &self.previous_signals
+    }
 }
 
 impl TrackElement for VacancySection {
