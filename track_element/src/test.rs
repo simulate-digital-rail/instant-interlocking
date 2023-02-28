@@ -51,7 +51,7 @@ fn set_basic_driveway() {
         vec![],
     );
 
-    let mut dw = Driveway::new(Vec::new(), ts, "S".to_string(), "S".to_string());
+    let mut dw = Driveway::new(Vec::new(), ts, s.clone(), s.clone());
     dw.set_way().unwrap();
 
     assert!(matches!(p1.read().unwrap().state(), PointState::Right));
@@ -98,26 +98,26 @@ fn set_conflicting_driveway() {
         DrivewayState::new(
             Vec::new(),
             vec![
-                (s1, (MainSignalState::Ks1).into()),
-                (s2, (MainSignalState::Ks1).into()),
+                (s1.clone(), (MainSignalState::Ks1).into()),
+                (s2.clone(), (MainSignalState::Ks1).into()),
             ],
             Vec::new(),
         ),
-        "A".to_string(),
-        "B".to_string(),
+        s1.clone(),
+        s2.clone(),
     )));
     let mut dw2 = Driveway::new(
         vec![dw1.clone()],
         DrivewayState::new(
             Vec::new(),
             vec![
-                (s12, (MainSignalState::Ks1).into()),
-                (s22, (MainSignalState::Ks1).into()),
+                (s12.clone(), (MainSignalState::Ks1).into()),
+                (s22.clone(), (MainSignalState::Ks1).into()),
             ],
             Vec::new(),
         ),
-        "C".to_string(),
-        "D".to_string(),
+        s12.clone(),
+        s22.clone(),
     );
 
     dw1.write().unwrap().set_way().unwrap();

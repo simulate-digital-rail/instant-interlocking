@@ -21,7 +21,7 @@ impl ControlStation {
     }
 
     pub fn start(&self) {
-        let driveways = self.driveway_manager.get_driveway_ids().collect::<Vec<_>>();
+        let driveways = self.driveway_manager.get_driveway_ids();
         loop {
             println!("Existing Driveways: {driveways:?}");
             print!("> ");

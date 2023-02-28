@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
 
-use crate::generate::GenerationError;
+use crate::generate::{uuid_to_var_name, GenerationError};
 
 pub trait Realize {
     fn realize(&self) -> TokenStream;
@@ -10,8 +10,8 @@ pub trait Realize {
 
 #[derive(Deserialize, Debug)]
 pub struct DrivewayRepr {
-    pub start_signal: String,
-    pub end_signal: String,
+    pub start_signal: TrackElement,
+    pub end_signal: TrackElement,
     pub states: Vec<TrackElement>,
 }
 
@@ -33,7 +33,7 @@ pub enum TrackElement {
     VacancySection {
         uuid: String,
         state: VacancySectionState,
-        previous_signals: Vec<String>,
+        previous_signals: Vec<TrackElement>,
     },
 }
 
@@ -76,12 +76,8 @@ impl Realize for TrackElement {
                 let prev_signals: Vec<_> = previous_signals
                     .iter()
                     .map(|signal| {
-                        quote! {
-                            match track_elements.get(#signal).unwrap() {
-                                TrackElement::Signal(signal) => signal.clone(),
-                                _ => unreachable!()
-                            }
-                        }
+                        let var = uuid_to_var_name(signal.id());
+                        quote! { #var.clone() }
                     })
                     .collect();
 

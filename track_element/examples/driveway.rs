@@ -27,7 +27,7 @@ fn main() {
         vec![],
     );
 
-    let mut dw = Driveway::new(Vec::new(), ts, "S".to_string(), "S".to_string());
+    let mut dw = Driveway::new(Vec::new(), ts, s.clone(), s.clone());
     dw.set_way().unwrap();
     assert!(matches!(p1.read().unwrap().state(), PointState::Right));
     assert!(matches!(p2.read().unwrap().state(), PointState::Left));
