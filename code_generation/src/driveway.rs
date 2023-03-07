@@ -17,7 +17,11 @@ pub struct DrivewayRepr {
 
 impl DrivewayRepr {
     pub fn id(&self) -> String {
-        format!("{}_{}", self.start_signal.id(), self.end_signal.id())
+        format!(
+            "{}_{}",
+            uuid_to_var_name(self.start_signal.id()),
+            uuid_to_var_name(self.end_signal.id())
+        )
     }
 }
 
