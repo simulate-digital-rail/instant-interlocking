@@ -1,6 +1,9 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
-use std::{cmp::Ordering, collections::BTreeMap};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, HashMap},
+};
 use thiserror::Error;
 
 use crate::{
@@ -27,8 +30,8 @@ fn realize_element(element: &TrackElement) -> TokenStream {
     quote! {let #var_name = #realized;}
 }
 
-fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
-    let point_states: Vec<_> = element_target_states
+fn realize_driveway(driveway: &DrivewayRepr) -> TokenStream {
+    let point_states: Vec<_> = driveway
         .states
         .iter()
         .filter_map(|e| {
@@ -42,7 +45,7 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
         })
         .collect();
 
-    let signal_states: Vec<_> = element_target_states
+    let signal_states: Vec<_> = driveway
         .states
         .iter()
         .filter_map(|e| {
@@ -56,7 +59,7 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
         })
         .collect();
 
-    let vacancy_section_states: Vec<_> = element_target_states
+    let vacancy_section_states: Vec<_> = driveway
         .states
         .iter()
         .filter_map(|e| {
@@ -70,15 +73,17 @@ fn realize_driveway(element_target_states: &DrivewayRepr) -> TokenStream {
         })
         .collect();
 
-    let start_signal = uuid_to_var_name(element_target_states.start_signal.id());
-    let end_signal = uuid_to_var_name(element_target_states.end_signal.id());
+    let start_signal = uuid_to_var_name(driveway.start_signal.id());
+    let end_signal = uuid_to_var_name(driveway.end_signal.id());
+    let driveway_name = format_ident!("{}", driveway.id());
 
     quote! {
         let point_states = vec![#(#point_states),*];
         let signal_states = vec![#(#signal_states),*];
         let vacancy_section_states = vec![#(#vacancy_section_states),*];
         let target_state = track_element::driveway::DrivewayState::new(point_states, signal_states, vacancy_section_states);
-        driveway_manager.add(Arc::new(RwLock::new(track_element::driveway::Driveway::new(vec![], target_state, #start_signal.clone(), #end_signal.clone()))));
+        let mut #driveway_name = Arc::new(RwLock::new(track_element::driveway::Driveway::new(vec![], target_state, #start_signal.clone(), #end_signal.clone())));
+        driveway_manager.add(#driveway_name.clone());
     }
 }
 
@@ -134,9 +139,24 @@ fn generate_setup_tokens(
 
         let mut driveway_manager = track_element::driveway::DrivewayManager::new(BTreeMap::new());
         #(#driveway_tokens)*
-
-        driveway_manager.update_conflicting_driveways();
     }
+}
+
+fn generate_conflicting_driveway_tokens(
+    conflicting_driveways: HashMap<String, Vec<String>>,
+) -> TokenStream {
+    let driveways = conflicting_driveways.iter().map(|(driveway, conflicts)| {
+        let driveway = format_ident!("{driveway}");
+        let conflicts = conflicts.iter().map(|c| {
+            let c = format_ident!("{c}");
+            quote! {#c.clone()}
+        });
+        quote! {
+            #driveway.write().unwrap().set_conflicting_driveways(&mut vec![#(#conflicts),*]);
+        }
+    });
+
+    quote! {{#(#driveways)*}}
 }
 
 pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationError> {
@@ -149,6 +169,22 @@ pub fn generate_tests(routes: &Vec<DrivewayRepr>) -> Result<String, GenerationEr
     });
 
     let track_element_tokens: Vec<_> = track_elements.iter().map(realize_element).collect();
+
+    let mut conflicting_driveways = HashMap::new();
+    for driveway in routes {
+        let mut conflicts = vec![];
+        for other in routes {
+            if driveway != other
+                && driveway
+                    .states
+                    .iter()
+                    .any(|t| other.states.iter().any(|o| t.id() == o.id()))
+            {
+                conflicts.push(other.id());
+            }
+        }
+        conflicting_driveways.insert(driveway.id(), conflicts);
+    }
 
     let driveway_tokens: _ = routes
         .iter()
@@ -219,12 +255,30 @@ pub fn generate(routes: &Vec<DrivewayRepr>, cs: ControlStation) -> Result<String
 
     let track_element_tokens: Vec<_> = track_elements.iter().map(realize_element).collect();
 
+    let mut conflicting_driveways = HashMap::new();
+    for driveway in routes {
+        let mut conflicts = vec![];
+        for other in routes {
+            if driveway != other
+                && driveway
+                    .states
+                    .iter()
+                    .any(|t| other.states.iter().any(|o| t.id() == o.id()))
+            {
+                conflicts.push(other.id());
+            }
+        }
+        conflicting_driveways.insert(driveway.id(), conflicts);
+    }
+
     let driveway_tokens: _ = routes
         .iter()
         .map(realize_driveway)
         .collect::<Vec<TokenStream>>();
 
     let setup_tokens = generate_setup_tokens(track_element_tokens, driveway_tokens);
+
+    let conflicting_driveway_tokens = generate_conflicting_driveway_tokens(conflicting_driveways);
 
     let control_station = generate_control_station(&cs);
 
@@ -247,6 +301,7 @@ pub fn generate(routes: &Vec<DrivewayRepr>, cs: ControlStation) -> Result<String
         #main_attr
         #main_qualifier fn main() {
             #setup_tokens
+            #conflicting_driveway_tokens
 
             println!("Driveways: {:?}", driveway_manager.get_driveway_ids());
 

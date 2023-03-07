@@ -8,14 +8,20 @@ pub trait Realize {
     fn realize(&self) -> TokenStream;
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct DrivewayRepr {
     pub start_signal: TrackElement,
     pub end_signal: TrackElement,
     pub states: Vec<TrackElement>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+impl DrivewayRepr {
+    pub fn id(&self) -> String {
+        format!("{}_{}", self.start_signal.id(), self.end_signal.id())
+    }
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum TrackElement {
     Point {
@@ -89,7 +95,7 @@ impl Realize for TrackElement {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct SignalState {
     pub main: MainSignalState,
@@ -114,7 +120,7 @@ impl Realize for SignalState {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub struct SupportedSignalStates {
     pub main: Vec<MainSignalState>,
@@ -140,7 +146,7 @@ impl Realize for SupportedSignalStates {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct MainSignalState(pub String);
 
 impl TryInto<track_element::signal::MainSignalState> for &MainSignalState {
@@ -221,7 +227,7 @@ impl Realize for MainSignalState {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct AdditionalSignalZs3Symbol(u8);
 
 impl TryInto<track_element::signal::AdditionalSignalZs3Symbol> for &AdditionalSignalZs3Symbol {
@@ -292,7 +298,7 @@ impl Realize for AdditionalSignalZs3Symbol {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum PointState {
     Left,
@@ -308,7 +314,7 @@ impl Realize for PointState {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum VacancySectionState {
     Free,

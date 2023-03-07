@@ -178,6 +178,10 @@ impl Driveway {
             .iter()
             .any(|d| d.read().unwrap().is_set())
     }
+
+    pub fn set_conflicting_driveways(&mut self, driveways: &mut Vec<Arc<RwLock<Driveway>>>) {
+        self.conflicting_driveways.append(driveways);
+    }
 }
 
 pub struct DrivewayManager {
@@ -205,7 +209,7 @@ impl DrivewayManager {
             .collect()
     }
 
-    pub fn get_point_state(&self, element: &str) -> Result<PointState, TrackElementError> {
+    pub fn get_point_state(&self, _element: &str) -> Result<PointState, TrackElementError> {
         todo!()
     }
 
