@@ -7,3 +7,25 @@ It is divided into a few subprojects:
 - `grpc_control_station`: A frontend for the generated interlocking that can be used with the EULYNX Live Lab UI.
 - `track_element`: A Rust library that provides types and traits for representing driveways and common track elements.
 - `ui`: A web-based application to generate interlockings from OpenRailwayMap data.
+
+## Motivation
+
+Even though digital tools are available, most railway planning still happens with analog methods.
+Digital planning data generated from publicly available data sources could serve as a basis for
+new building projects. This project explores a pipeline that transforms geodata from public sources
+into planning data and generates executable interlocking code from this planning data.
+
+## The Pipeline
+
+This project presents a pipeline for generating executable interlocking code from planning data.
+
+![The Steps of the Pipeline: Geodata, Planning Data, Code Generation, Testing, Run Anywhere](docs/pipeline.png)
+
+The pipeline starts by extracting planning information from geodata (e.g. OpenRailwayMap). This planning
+data (which includes information such as where tracks, points, and signals are located) is then used to
+generate possible driveways and enriched with the information what states track elements have to be in
+for a driveway to be set. We then use this enriched planning data to create executable Rust code that 
+uses the `track_element` crate.
+
+Beyond this step, two independent projects explored the viability of using WebAssembly to test and
+deploy the generated code.
