@@ -10,6 +10,8 @@ pub enum VacancySectionState {
     #[default]
     Free,
     Occupied,
+    CommunicationError,
+    Disturbed
 }
 
 #[derive(Debug)]
