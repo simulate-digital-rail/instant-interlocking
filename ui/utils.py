@@ -1,3 +1,5 @@
+import os
+import platform
 import sqlite3
 from socket import socket
 from subprocess import Popen, check_call
@@ -61,10 +63,18 @@ def generate_interlocking(rowid):
             ],
             cwd=r"../",
         )
-        check_call(["cargo", "build"], cwd=f"../ixl_{rowid}")
+        check_call(["cargo", "build", "--release"], cwd=f"../ixl_{rowid}")
+        if platform.system() == "Windows":
+            os.rename(f"../ixl_{rowid}/target/release/ixl.exe", f"../ixl_{rowid}/ixl.exe")
+        else:
+            os.rename(f"../ixl_{rowid}/target/release/ixl", f"../ixl_{rowid}/ixl")
+        check_call(["cargo", "clean"], cwd=f"../ixl_{rowid}")
 
         # start interlocking
-        process = Popen(["cargo", "run"], cwd=f"../ixl_{rowid}")
+        if platform.system() == "Windows":
+            process = Popen([f"../ixl_{rowid}/ixl.exe"], cwd=f"../ixl_{rowid}")
+        else:
+            process = Popen([f"../ixl_{rowid}/ixl"], cwd=f"../ixl_{rowid}")
 
         # wait for interlocking to be online
         sleep(1)
