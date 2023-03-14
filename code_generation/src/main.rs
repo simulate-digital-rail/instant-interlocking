@@ -343,7 +343,12 @@ fn main() -> anyhow::Result<()> {
 
     std::process::Command::new("cargo")
         .current_dir(&output_path)
-        .args(["add", "--path", "../track_element", "track_element"])
+        .args([
+            "add",
+            "--git",
+            "https://github.com/simulate-digital-rail/track_element",
+            "track_element",
+        ])
         .spawn()?
         .wait()?;
 
