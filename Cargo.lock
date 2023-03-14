@@ -1477,6 +1477,7 @@ dependencies = [
 [[package]]
 name = "track_element"
 version = "0.1.0"
+source = "git+https://github.com/simulate-digital-rail/track_element#03bb7e893c354e6c3d27f8b6b194dd120c8fb6ff"
 dependencies = [
  "anyhow",
  "serde_json",
