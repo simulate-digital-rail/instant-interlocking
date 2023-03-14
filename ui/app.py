@@ -48,8 +48,8 @@ def run_converter():
     rowid = query_db("SELECT last_insert_rowid()", one=True)["last_insert_rowid()"]
 
     # export JSON files for interlocking
-    exporter = InterlockingExporter(topology)
     try:
+        exporter = InterlockingExporter(topology)
         with open(f"generated/{rowid}_routes.json", "w") as routes_file:
             json.dump(exporter.export_routes(), routes_file)
         with open(f"generated/{rowid}_topology.json", "w") as topology_file:
