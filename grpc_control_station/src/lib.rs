@@ -220,8 +220,8 @@ fn signal_state_to_string(state: &SignalState) -> &'static str {
 
 fn vacancy_section_state_to_string(state: &VacancySectionState) -> &'static str {
     match state {
-        VacancySectionState::Free => "Unoccupied",
-        VacancySectionState::Occupied => "Occupied",
+        VacancySectionState::Free => "Unallocated",
+        VacancySectionState::Occupied => "Allocated",
         VacancySectionState::CommunicationError => "CommunicationError",
         VacancySectionState::Disturbed => "Disturbed",
     }
