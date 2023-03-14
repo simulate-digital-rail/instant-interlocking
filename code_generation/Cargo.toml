@@ -16,4 +16,4 @@ anyhow = "1.0.66"
 clap = { version = "4.1.4", features = ["derive"] }
 
 [dependencies.track_element]
-path = "../track_element"
+git = "https://github.com/simulate-digital-rail/track_element"
