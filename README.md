@@ -8,6 +8,15 @@ It is divided into a few subprojects:
 - `track_element`: A Rust library that provides types and traits for representing driveways and common track elements.
 - `ui`: A web-based application to generate interlockings from OpenRailwayMap data.
 
+The subprojects all contain a README with local setup instructions. To run the project as whole,
+you can use the provided dockerfile by running the following commands from the project root: 
+```shell
+docker build -t instant-interlocking .
+docker run --net host instant-interlocking
+```
+Note that the `--net host` is mandatory as we are starting the interlocking instances on new ports.
+You can reach the UI via http://localhost:5000
+
 ## Motivation
 
 Even though digital tools are available, most railway planning still happens with analog methods.
