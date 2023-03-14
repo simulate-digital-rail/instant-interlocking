@@ -159,7 +159,7 @@
                             document.getElementById("generating").innerHTML = "<p>Interlocking started!</p><div class='grid'><a href='http://" + document.location.hostname + ":" + result.port + "' target='_blank' role='button'>Open interlocking UI</a></div>"
                         }
                         if (result.state === "failed") {
-                            handleError({ "message": "Interlocking code generation failed." })
+                            handleError({ "message": "Interlocking code generation failed on the Rust side. See server log for more details." })
                             document.getElementById("content").style.visibility = "visible";
                             document.getElementById("generating").style.visibility = "hidden";
                         }
