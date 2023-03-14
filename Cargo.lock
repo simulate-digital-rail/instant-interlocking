@@ -224,7 +224,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
- "track_element",
+ "track_element 0.1.0",
 ]
 
 [[package]]
@@ -465,7 +465,7 @@ dependencies = [
  "tonic-build",
  "tonic-web",
  "tower-http",
- "track_element",
+ "track_element 0.1.0 (git+https://github.com/simulate-digital-rail/track_element)",
 ]
 
 [[package]]
@@ -1477,6 +1477,15 @@ dependencies = [
 [[package]]
 name = "track_element"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde_json",
+]
+
+[[package]]
+name = "track_element"
+version = "0.1.0"
+source = "git+https://github.com/simulate-digital-rail/track_element#769eca8a8293ac755186f0252bc4cc091fff0bbf"
 dependencies = [
  "anyhow",
  "serde_json",

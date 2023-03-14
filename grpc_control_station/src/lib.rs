@@ -20,10 +20,10 @@ use std::{
 use tonic::{transport::NamedService, Request, Response, Status};
 use tower_http::cors::CorsLayer;
 use track_element::{
-    driveway::{DrivewayManager, DrivewayState},
+    driveway::DrivewayManager,
     point::PointState,
     signal::{MainSignalState, SignalState},
-    vacancy_section::{self, VacancySectionState},
+    vacancy_section::VacancySectionState,
     TrackElement,
 };
 
@@ -107,11 +107,11 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<WsState>) -> impl 
 
 async fn handle_socket(mut socket: WebSocket, state: WsState) {
     loop {
-        let dw_state = state.driveway_manager.read().unwrap().state();
+        let driveway_manager = state.driveway_manager.clone();
 
         if socket
             .send(axum::extract::ws::Message::Text(
-                driveway_state_to_json(dw_state).to_string(),
+                driveway_state_to_json(driveway_manager).to_string(),
             ))
             .await
             .is_err()
@@ -227,7 +227,9 @@ fn vacancy_section_state_to_string(state: &VacancySectionState) -> &'static str 
     }
 }
 
-fn driveway_state_to_json(state: DrivewayState) -> Value {
+fn driveway_state_to_json(driveway_manager: Arc<RwLock<DrivewayManager>>) -> Value {
+    let driveway_manager = driveway_manager.read().unwrap();
+    let state = driveway_manager.state();
     let points = state.points();
     let signals = state.signals();
     let vacancy_sections = state.vacancy_sections();
@@ -246,8 +248,17 @@ fn driveway_state_to_json(state: DrivewayState) -> Value {
     }
 
     for (vacancy_section, state) in vacancy_sections {
-        output.get_mut("states").unwrap()[vacancy_section.read().unwrap().id()] =
-            vacancy_section_state_to_string(state).into();
+        if matches!(state, VacancySectionState::Occupied) {
+            output.get_mut("states").unwrap()[vacancy_section.read().unwrap().id()] =
+                vacancy_section_state_to_string(&VacancySectionState::Occupied).into();
+        } else {
+            let state = if driveway_manager.is_allocated(&vacancy_section.read().unwrap()) {
+                "Allocated".into()
+            } else {
+                "Unallocated".into()
+            };
+            output.get_mut("states").unwrap()[vacancy_section.read().unwrap().id()] = state;
+        }
     }
 
     // TODO
